@@ -28,6 +28,7 @@ Things we've added
 ------------------
 -	Binary numbers, using a `0b` prefix. i.e. `0b1001110`.
 -	New functions/function aliasses.
+-	Support to use number "types" using prefixes.
 
 Things you should NOT be able to do
 -----------------------------------
