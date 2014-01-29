@@ -26,6 +26,9 @@
 //	echo expression('round(4/3)') . '<br/>';
 
 	$E = new Expression();
+	echo $E->evaluate('1 == 1').'<br/>';
+	echo $E->evaluate('1 == 0').'<br/>';
+
 	echo $E->evaluate('1+3').'<br/>';
 
 	echo $E->evaluate('0x0f').'<br/>';
