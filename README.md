@@ -15,31 +15,31 @@ parenthesis, arithmetic, functions and more.
 
 Things you are allowed to do
 ----------------------------
-Use numbers, either floating-point or integer, including negative.
-Use a number of different bases, such as decimal, octal, hexadecimal.
-Use most basic math functions such as `abs()`, `min()`, `max()` and `sqrt()`.
-Use basic arithmetic operators `+`, `-`, `*`, `/` and `%`.
-Use parenthesis.
-Use comparisons (`true`/`false` returns `1`/`0` decimal).
-Use boolean operators in comparisons.
-Use bitwise operators.
+-	Use numbers, either floating-point or integer, including negative.
+-	Use a number of different bases, such as decimal, octal, hexadecimal.
+-	Use most basic math functions such as `abs()`, `min()`, `max()` and `sqrt()`.
+-	Use basic arithmetic operators `+`, `-`, `*`, `/` and `%`.
+-	Use parenthesis.
+-	Use comparisons (`true`/`false` returns `1`/`0` decimal).
+-	Use boolean operators in comparisons.
+-	Use bitwise operators.
 
 Things we've added
 ------------------
-Binary numbers, using a `0b` prefix. i.e. `0b1001110`.
-New functions/function aliasses.
+-	Binary numbers, using a `0b` prefix. i.e. `0b1001110`.
+-	New functions/function aliasses.
 
 Things you should NOT be able to do
 -----------------------------------
-Access any function not explicitely permitted.
-Access any static class method not explicitely permitted.
-Access any class properties or functions.
-Access any system constants.
-Access any variables, local or global.
-Access the Expression class itself.
-Access arrays of any kind, using either brackets or accolades.
-Use strings.
-Return anything except numbers (integer or floating-point).
+-	Access any function not explicitely permitted.
+-	Access any static class method not explicitely permitted.
+-	Access any class properties or functions.
+-	Access any system constants.
+-	Access any variables, local or global.
+-	Access the Expression class itself.
+-	Access arrays of any kind, using either brackets or accolades.
+-	Use strings.
+-	Return anything except numbers (integer or floating-point).
 
 Available functions
 -------------------
