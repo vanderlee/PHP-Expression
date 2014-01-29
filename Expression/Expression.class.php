@@ -163,7 +163,7 @@ class Expression {
 			throw new Exception("Illegal character '{$match[0]}'");
 		}
 
-		return eval("return({$expression});");
+		return floatval(eval("return({$expression});"));
 	}
 }
 
