@@ -22,4 +22,8 @@ class AllTests extends TestSuite {
 // @todo hack-sql-injection
 // @todo hack-php-execution
 // @todo hack-system-execution
+// @todo syntax
+// @todo comparison
+// @todo boolean
+// @todo bitwise
 // @todo ...
