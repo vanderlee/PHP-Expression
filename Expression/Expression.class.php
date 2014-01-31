@@ -114,7 +114,7 @@ class Expression {
 	private function match_map_function($match) {
 		$function = $match[0];
 		if (!isset($this->functions[$function])) {
-			throw new Exception("Illegal function '{$match[0]}'");
+			throw new ExpressionException("Illegal function '{$match[0]}'");
 		}
 		return $this->functions[$function];
 	}
@@ -141,12 +141,12 @@ class Expression {
 
 		// Empty expression
 		if ($expression === '') {
-			throw new Exception('Empty expression');
+			throw new ExpressionException('Empty expression');
 		}
 
 		// Illegal colons
 		if (strpos($expression, ':') !== FALSE) {
-			throw new Exception("Illegal character ':'");
+			throw new ExpressionException("Illegal character ':'");
 		}
 
 		// Illegal function
@@ -155,15 +155,21 @@ class Expression {
 
 		// Invalid function calls
 		if (preg_match('~[a-z_][\w:]*(?![\(\w:])~i', $expression, $match) > 0) {
-			throw new Exception("Invalid function call '{$match[0]}'");
+			throw new ExpressionException("Invalid function call '{$match[0]}'");
 		}
 
 		// Illegal characters
 		if (preg_match('~[^-^+/%*&|<>!=.()0-9a-z,_:]~i', $expression, $match) > 0) {
-			throw new Exception("Illegal character '{$match[0]}'");
+			throw new ExpressionException("Illegal character '{$match[0]}'");
 		}
 
-		return floatval(eval("return({$expression});"));
+		ob_start();
+		 $result = floatval(eval("return({$expression});"));
+		if (ob_get_clean() !== '') {
+			throw new ExpressionException('Syntax error');
+		}
+
+		return $result;
 	}
 }
 

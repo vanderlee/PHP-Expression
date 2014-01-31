@@ -14,16 +14,10 @@ class AllTests extends TestSuite {
 	}
 }
 
-// @todo parenthesis
-// @todo builtin functions
-// @todo global functions
-// @todo static class functions
 // @todo hack-xss
 // @todo hack-sql-injection
-// @todo hack-php-execution
 // @todo hack-system-execution
-// @todo syntax
 // @todo comparison
 // @todo boolean
 // @todo bitwise
-// @todo ...
+// @todo catch exception messages
