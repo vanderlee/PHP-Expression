@@ -1,11 +1,7 @@
 <?php
 
-require_once('simpletest/autorun.php');
-
-function expression_autoload($classname) {
-	include_once dirname(__FILE__) . '/Expression/'.preg_replace('~\W~', '', $classname).'.class.php';
-}
-spl_autoload_register('expression_autoload');
+require_once 'simpletest/autorun.php';
+require_once 'Expression/autoloader.php';
 
 class AllTests extends TestSuite {
 	function __construct() {

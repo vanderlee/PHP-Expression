@@ -1,8 +1,6 @@
 <?php
 
-	spl_autoload_register(function($classname) {
-		include_once dirname(__FILE__) . '/Expression/'.preg_replace('~\W~', '', $classname).'.class.php';
-	});
+	require_once 'Expression/autoloader.php';
 
 //	require_once 'Expression.class.php';
 //	require_once 'ExpressionPercentageUnit.class.php';
