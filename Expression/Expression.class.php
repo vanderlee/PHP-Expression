@@ -133,7 +133,7 @@ class Expression {
 			array_walk($suffixes, 'preg_quote');
 			$suffix_string = join('|', $suffixes);
 
-			$expression = preg_replace_callback('~\b([\d.]+)('.$suffix_string.')~i', array($this, 'match_convert_unit'), $expression);
+			$expression = preg_replace_callback('~(-?(?=[\d.]+)\d*\\.?\d*)('.$suffix_string.')~i', array($this, 'match_convert_unit'), $expression);
 		}
 
 		// Remove any whitespace
