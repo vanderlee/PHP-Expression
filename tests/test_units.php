@@ -1,6 +1,7 @@
 <?php
 
 class test_units extends UnitTestCase {
+
 	function testUnit() {
 		$E = new Expression();
 		$E->addUnit('u', 10);
@@ -14,4 +15,12 @@ class test_units extends UnitTestCase {
 		$this->assertEqual($E->evaluate('.5u'), 5);
 		$this->assertEqual($E->evaluate('-.5u'), -5);
 	}
+
+	function testUnitDot() {
+		$E = new Expression();
+		$E->addUnit('u', 10);
+		$this->expectException('ExpressionException');
+		$E->evaluate('.u');
+	}
+
 }
