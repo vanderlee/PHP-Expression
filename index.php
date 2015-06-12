@@ -35,7 +35,7 @@
 	$E->addUnit('%', 1000/100);
 	echo $E->evaluate('1%+3px').'<br/>';
 
-	$P = new Expression\PercentageUnit(200);
+	$P = new PercentageUnit(200);
 	$E->addUnit('%', $P);
 	echo $E->evaluate('50%').'<br/>';
 	$P->set(1000);
@@ -58,7 +58,7 @@
 	echo $E->evaluate('min(1,2)').'<br/>';
 
 	// Decibel unit
-	$E->addUnit('dB', new Expression\DecibelUnit);
+	$E->addUnit('dB', new DecibelUnit);
 	echo $E->evaluate('0dB').'<br/>';
 
 
