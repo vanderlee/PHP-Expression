@@ -47,7 +47,7 @@ class ArithmeticTest extends PHPUnit_Framework_TestCase {
 	}
 
 	public function testDivisionByZero() {
-		$this->setExpectedException('ExpressionException');		
+		$this->setExpectedException('PHPUnit_Framework_Error_Warning', 'Division by zero');		
 		$this->object->evaluate('0/0');
 	}
 
@@ -62,8 +62,12 @@ class ArithmeticTest extends PHPUnit_Framework_TestCase {
 		$this->assertEquals($this->object->evaluate('12%8'), 4);
 	}
 
+	/**
+	 * @expectedException PHPUnit_Framework_Error_Warning
+	 * @expectedExceptionMessage Division by zero
+	 */
 	public function testModuleByZero() {
-		$this->setExpectedException('ExpressionException');		
+		$this->setExpectedException('PHPUnit_Framework_Error_Warning', 'Division by zero');		
 		$this->object->evaluate('12%0');
 	}
 }

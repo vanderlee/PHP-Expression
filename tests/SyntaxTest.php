@@ -15,14 +15,12 @@ class SyntaxTest extends PHPUnit_Framework_TestCase {
 	}
 	
 	public function testUnbalancedParenthesisOpen() {
-		
-		$this->setExpectedException('ExpressionException');
+		$this->setExpectedException('ExpressionException', 'Syntax error');
 		$this->object->evaluate('(1');
 	}
 
 	public function testUnbalancedParenthesisClose() {
-		
-		$this->setExpectedException('ExpressionException');
+		$this->setExpectedException('ExpressionException', 'Syntax error');
 		$this->object->evaluate('1)');
 	}
 
