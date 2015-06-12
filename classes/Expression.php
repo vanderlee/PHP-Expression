@@ -81,7 +81,7 @@ class Expression {
 	}
 
 	public function addFunction($alias, $function = null) {
-		$this->functions[$alias] = $function ?: $alias;
+		$this->functions[$alias] = $function ? $function : $alias;
 	}
 
 	public function removeFunction($alias) {
