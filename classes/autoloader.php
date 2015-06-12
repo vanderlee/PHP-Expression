@@ -1,11 +1,9 @@
 <?php
 
-class ExpressionAutoloader {
-	public function autoload($class) {
-		if (is_file($file = __DIR__.'/'.$class.'.php')) {
-			require_once $file;
-		}
+function Expression_autoloader($class) {
+	if (is_file(dirname(__FILE__). '/' . $class . '.php')) {
+		require dirname(__FILE__). '/' . $class . '.php';
 	}
 }
 
-spl_autoload_register(array(new ExpressionAutoloader(), 'autoload'));
+spl_autoload_register('Expression_autoloader');
