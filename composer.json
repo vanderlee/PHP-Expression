@@ -13,8 +13,6 @@
 		"php": ">=5.2.0"
 	},
 	"autoload": {
-		"psr-0": {
-			"Expression": "classes/"
-		}
+		"classmap": ["classes/"]
 	}
 }
