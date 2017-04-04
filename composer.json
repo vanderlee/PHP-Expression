@@ -1,0 +1,20 @@
+{
+	"name": "vanderlee/expression",
+	"description": "Safe, `eval()`-based simple and extendable expression parser",
+	"type": "library",
+	"keywords": ["expression", "parser", "eval", "math"],
+	"homepage": "https://github.com/vanderlee/PHP-Expression",
+	"license": "MIT",
+	"support": {
+		"issues": "https://github.com/vanderlee/PHP-Expression/issues",
+		"source": "https://github.com/vanderlee/PHP-Expression/"
+	},
+	"require": {
+		"php": ">=5.2.0"
+	},
+	"autoload": {
+		"psr-0": {
+			"Expression": "classes/"
+		}
+	}
+}
