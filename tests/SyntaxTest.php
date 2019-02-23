@@ -15,53 +15,53 @@ class SyntaxTest extends PHPUnit_Framework_TestCase {
 	}
 	
 	public function testUnbalancedParenthesisOpen() {
-		$this->setExpectedException('ExpressionException', 'Syntax error');
+		$this->setExpectedException(ExpressionException::class, "syntax error, unexpected ';'");
 		$this->object->evaluate('(1');
 	}
 
 	public function testUnbalancedParenthesisClose() {
-		$this->setExpectedException('ExpressionException', 'Syntax error');
+		$this->setExpectedException(ExpressionException::class, "syntax error, unexpected ')', expecting ';'");
 		$this->object->evaluate('1)');
 	}
 
 	public function testStringQuotes() {
 		
-		$this->setExpectedException('ExpressionException');
+		$this->setExpectedException(ExpressionException::class, "illegal character '\"'");
 		$this->object->evaluate('"3"');
 	}
 
 	public function testStringApostrophes() {
 		
-		$this->setExpectedException('ExpressionException');
+		$this->setExpectedException(ExpressionException::class, "illegal character '''");
 		$this->object->evaluate("'3'");
 	}
 
 	public function testBrackets() {
 		
-		$this->setExpectedException('ExpressionException');
+		$this->setExpectedException(ExpressionException::class, "illegal character '['");
 		$this->object->evaluate('123[1]');
 	}
 
 	public function testAccolades() {
 		
-		$this->setExpectedException('ExpressionException');
+		$this->setExpectedException(ExpressionException::class, "illegal character '{'");
 		$this->object->evaluate('123{1}');
 	}
 
 	public function testComma() {
-		$this->setExpectedException('ExpressionException', 'Syntax error');
+		$this->setExpectedException(ExpressionException::class, "syntax error, unexpected ','");
 		$this->object->evaluate('1,2');
 	}
 
 	public function testSemicolon() {
 		
-		$this->setExpectedException('ExpressionException');
+		$this->setExpectedException(ExpressionException::class, "illegal character ';'");
 		$this->object->evaluate('1;2');
 	}
 
 	public function testColon() {
 		
-		$this->setExpectedException('ExpressionException');
+		$this->setExpectedException(ExpressionException::class, "illegal character ':'");
 		$this->object->evaluate('1:2');
 	}
 }
