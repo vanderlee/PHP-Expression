@@ -27,24 +27,35 @@ Things you are allowed to do
 -	Use comparisons (`true`/`false` returns `1`/`0` decimal).
 -	Use boolean operators in comparisons.
 -	Use bitwise operators.
+-   Use textual boolean operators like `and`, `xor` and `or`
 
 Things we've added
 ------------------
 -	Binary numbers, using a `0b` prefix. i.e. `0b1001110`.
 -	New functions/function aliasses.
 -	Support to use number "types" using prefixes.
+-   Boolean operator `^^` for logical XOR (same as `xor`).
+-   Textual boolean operator `not` (same as `!`).
 
 Things you should NOT be able to do
 -----------------------------------
--	Access any function not explicitely permitted.
--	Access any static class method not explicitely permitted.
--	Access any class properties or functions.
--	Access any system constants.
--	Access any variables, local or global.
--	Access the Expression class itself.
+-	Access functions not explicitely permitted.
+-	Access static classs method not explicitely permitted.
+-	Access class properties or functions.
+-	Access system constants.
+-	Access variables, local or global.
+-	Access Expression class itself.
+-   Access namespace functions. 
 -	Access arrays of any kind, using either brackets or accolades.
 -	Use strings.
--	Return anything except numbers (integer or floating-point).
+-	Return anything except numbers (integer or floating-point, 1/0 for boolean results).
+
+Things you cannnot do
+---------------------
+-   Ternary operator (`x ? y : z`) not supported.
+-   Elvis operator (`x ?: z`) not supported.
+-   Null-coalescing operator (`x ?? z`) not supported.
+-   Spaceship operator (`x <=> y`) only supported on PHP 7 and up (it's a PHP 7 feature).
 
 Available functions
 -------------------

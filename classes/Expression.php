@@ -132,7 +132,7 @@ class Expression
         $function = $match[0];
 
         if (isset($this->functions[$function])) {
-            return $this->functions[$function];
+            return '\\' . $this->functions[$function];
         }
 
         throw new ExpressionException("illegal function '{$match[0]}'");
@@ -184,7 +184,7 @@ class Expression
         }
 
         // Illegal characters
-        if (preg_match('~[^-^+/%*&|<>!=.()0-9a-z,_:]~i', $expression, $match) > 0) {
+        if (preg_match('~[^-e^+/%*&|<>!=.()0-9a-z,_:\\\\]~i', $expression, $match) > 0) {
             throw new ExpressionException("illegal character '{$match[0]}'");
         }
 
