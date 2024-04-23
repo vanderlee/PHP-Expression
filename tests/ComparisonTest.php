@@ -1,6 +1,10 @@
 <?php
+declare(strict_types=1);
 
-class ComparisonTest extends PHPUnit_Framework_TestCase
+use PHPUnit\Framework\TestCase;
+use Vanderlee\Expression\Expression;
+
+class ComparisonTest extends TestCase
 {
 
     /**
@@ -8,21 +12,7 @@ class ComparisonTest extends PHPUnit_Framework_TestCase
      */
     protected $object;
 
-    protected function setUp()
-    {
-        $this->object = new Expression();
-    }
-
-    /**
-     * @dataProvider dataComparison
-     * @throws ExpressionException
-     */
-    public function testComparison($expression, $expected)
-    {
-        $this->assertEquals($expected, $this->object->evaluate($expression));
-    }
-
-    public function dataComparison()
+    public static function dataComparison(): array
     {
         return [
             ['0 == 0', 1],
@@ -67,17 +57,7 @@ class ComparisonTest extends PHPUnit_Framework_TestCase
         ];
     }
 
-    /**
-     * @requires PHP 7
-     * @dataProvider dataSpaceship
-     * @throws ExpressionException
-     */
-    public function testSpaceship($expression, $expected)
-    {
-        $this->assertEquals($expected, $this->object->evaluate($expression));
-    }
-
-    public function dataSpaceship()
+    public static function dataSpaceship(): array
     {
         return [
             ['0 <=> 0', 0],
@@ -85,5 +65,29 @@ class ComparisonTest extends PHPUnit_Framework_TestCase
             ['0 <=> 1', -1],
             ['1 <=> 1', 0],
         ];
+    }
+
+    /**
+     * @dataProvider dataComparison
+     * @throws Exception
+     */
+    public function testComparison($expression, $expected)
+    {
+        $this->assertEquals($expected, $this->object->evaluate($expression));
+    }
+
+    /**
+     * @dataProvider dataSpaceship
+     * @requires PHP 7
+     * @throws Exception
+     */
+    public function testSpaceship($expression, $expected)
+    {
+        $this->assertEquals($expected, $this->object->evaluate($expression));
+    }
+
+    protected function setUp(): void
+    {
+        $this->object = new Expression();
     }
 }

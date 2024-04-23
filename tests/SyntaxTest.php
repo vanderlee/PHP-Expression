@@ -1,35 +1,18 @@
 <?php
+declare(strict_types=1);
 
-class SyntaxTest extends PHPUnit_Framework_TestCase
+use PHPUnit\Framework\TestCase;
+use Vanderlee\Expression\Exception;
+use Vanderlee\Expression\Expression;
+
+class SyntaxTest extends TestCase
 {
     /**
      * @var Expression
      */
     protected $object;
 
-    /**
-     * Sets up the fixture, for example, opens a network connection.
-     * This method is called before a test is executed.
-     */
-    protected function setUp()
-    {
-        $this->object = new Expression();
-    }
-
-    /**
-     * @dataProvider dataSyntax
-     *
-     * @param $expression
-     * @param $exception
-     * @throws ExpressionException
-     */
-    public function testSyntax($expression)
-    {
-        $this->setExpectedException(ExpressionException::class);
-        $this->object->evaluate($expression);
-    }
-
-    public function dataSyntax()
+    public static function dataSyntax(): array
     {
         return [
             ['(1'],
@@ -45,5 +28,25 @@ class SyntaxTest extends PHPUnit_Framework_TestCase
             ['1?:2'],
             ['1??2'],
         ];
+    }
+
+    /**
+     * @dataProvider dataSyntax
+     * @param $expression
+     * @throws Exception
+     */
+    public function testSyntax($expression)
+    {
+        $this->expectException(Exception::class);
+        $this->object->evaluate($expression);
+    }
+
+    /**
+     * Sets up the fixture, for example, opens a network connection.
+     * This method is called before a test is executed.
+     */
+    protected function setUp(): void
+    {
+        $this->object = new Expression();
     }
 }

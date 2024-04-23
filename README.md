@@ -1,11 +1,11 @@
 PHP-Expression
 ==============
-Version 0.2.1
+Version 1.0.0
 [![Build Status](https://travis-ci.org/vanderlee/PHP-Expression.svg)](https://travis-ci.org/vanderlee/PHP-Expression)
 
 Simple and fast PHP expression parser, based on secure use of eval().
 
-Compatible with PHP 5.2 and up.
+Compatible with PHP 7.1 and up.
 
 Using eval() is evil()
 ----------------------
@@ -64,7 +64,7 @@ TODO
 Disclaimers
 -----------
 Though this class has been tested and independantly reviewed by several people,
-I cannot make any absolute 100% guarentee that it cannot be hacked. If you find
+I cannot make any absolute 100% guarantee that it cannot be hacked. If you find
 any potential security problem, please let us know.
 
 Even though the Expression class itself is supposed to be secure, the return

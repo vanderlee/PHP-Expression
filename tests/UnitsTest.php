@@ -1,38 +1,50 @@
 <?php
+declare(strict_types=1);
 
-class UnitsTest extends PHPUnit_Framework_TestCase {
-	/**
-	 * @var Expression
-	 */
-	protected $object;
+use PHPUnit\Framework\TestCase;
+use Vanderlee\Expression\Exception;
+use Vanderlee\Expression\Expression;
 
-	/**
-	 * Sets up the fixture, for example, opens a network connection.
-	 * This method is called before a test is executed.
-	 */
-	protected function setUp() {		
-		$this->object = new Expression();
-	}
+class UnitsTest extends TestCase
+{
+    /**
+     * @var Expression
+     */
+    protected $object;
 
-	public function testUnit() {
-		
-		$this->object->addUnit('u', 10);
-		$this->assertEquals($this->object->evaluate('2'), 2);
-		$this->assertEquals($this->object->evaluate('2u'), 20);
-		$this->assertEquals($this->object->evaluate('-2u'), -20);
-		$this->assertEquals($this->object->evaluate('2.5u'), 25);
-		$this->assertEquals($this->object->evaluate('-2.5u'), -25);
-		$this->assertEquals($this->object->evaluate('2.u'), 20);
-		$this->assertEquals($this->object->evaluate('-2.u'), -20);
-		$this->assertEquals($this->object->evaluate('.5u'), 5);
-		$this->assertEquals($this->object->evaluate('-.5u'), -5);
-	}
+    /**
+     * @throws Exception
+     */
+    public function testUnit()
+    {
 
-	public function testUnitDot() {
-		
-		$this->object->addUnit('u', 10);
-		$this->setExpectedException('ExpressionException');
-		$this->object->evaluate('.u');
-	}
+        $this->object->addUnit('u', 10);
+        $this->assertEquals(2, $this->object->evaluate('2'));
+        $this->assertEquals(20, $this->object->evaluate('2u'));
+        $this->assertEquals(-20, $this->object->evaluate('-2u'));
+        $this->assertEquals(25, $this->object->evaluate('2.5u'));
+        $this->assertEquals(-25, $this->object->evaluate('-2.5u'));
+        $this->assertEquals(20, $this->object->evaluate('2.u'));
+        $this->assertEquals(-20, $this->object->evaluate('-2.u'));
+        $this->assertEquals(5, $this->object->evaluate('.5u'));
+        $this->assertEquals(-5, $this->object->evaluate('-.5u'));
+    }
+
+    public function testUnitDot()
+    {
+
+        $this->object->addUnit('u', 10);
+        $this->expectException(Exception::class);
+        $this->object->evaluate('.u');
+    }
+
+    /**
+     * Sets up the fixture, for example, opens a network connection.
+     * This method is called before a test is executed.
+     */
+    protected function setUp(): void
+    {
+        $this->object = new Expression();
+    }
 
 }

@@ -1,54 +1,66 @@
 <?php
 
-class HackAccessTest extends PHPUnit_Framework_TestCase {
-	/**
-	 * @var Expression
-	 */
-	protected $object;
+use PHPUnit\Framework\TestCase;
+use Vanderlee\Expression\Exception;
+use Vanderlee\Expression\Expression;
 
-	/**
-	 * Sets up the fixture, for example, opens a network connection.
-	 * This method is called before a test is executed.
-	 */
-	protected function setUp() {		
-		$this->object = new Expression();
-	}
-	
-	public function testPhpFunction() {
-		
-		$this->setExpectedException('ExpressionException');
-		$this->object->evaluate('print(1)');
-	}
+class HackAccessTest extends TestCase
+{
+    /**
+     * @var Expression
+     */
+    protected $object;
 
-	public function testClassMethod() {
-		
-		$this->setExpectedException('ExpressionException');
-		$this->object->evaluate('DateTime::getLastErrors()');
-	}
+    public function testPhpFunction()
+    {
 
-	public function testClassConstant() {
-		
-		$this->setExpectedException('ExpressionException');
-		$this->object->evaluate('DateTime::ISO8601');
-	}
+        $this->expectException(Exception::class);
+        $this->object->evaluate('print(1)');
+    }
 
-	public function testClassVariable() {
-		
-		$this->setExpectedException('ExpressionException');
-		$this->object->evaluate('DateTime::$foo');
-	}
+    public function testClassMethod()
+    {
 
-	public function testObjectMethod() {
-		
-		$clazz = new DateTime;
-		$this->setExpectedException('ExpressionException');
-		$this->object->evaluate('$clazz->getTimestamp()');
-	}
+        $this->expectException(Exception::class);
+        $this->object->evaluate('DateTime::getLastErrors()');
+    }
 
-	public function testObjectVariable() {
-		
-		$clazz = new DateTime;
-		$this->setExpectedException('ExpressionException');
-		$this->object->evaluate('$clazz->foo');
-	}
+    public function testClassConstant()
+    {
+
+        $this->expectException(Exception::class);
+        $this->object->evaluate('DateTime::ISO8601');
+    }
+
+    public function testClassVariable()
+    {
+
+        $this->expectException(Exception::class);
+        $this->object->evaluate('DateTime::$foo');
+    }
+
+    public function testObjectMethod()
+    {
+        /** @noinspection PhpUnusedLocalVariableInspection */
+        $clazz = new DateTime;
+        $this->expectException(Exception::class);
+        $this->object->evaluate('$clazz->getTimestamp()');
+    }
+
+    public function testObjectVariable()
+    {
+        /** @noinspection PhpUnusedLocalVariableInspection */
+        $clazz = new DateTime;
+        $this->expectException(Exception::class);
+        $this->object->evaluate('$clazz->foo');
+    }
+
+    /**
+     * Sets up the fixture, for example, opens a network connection.
+     * This method is called before a test is executed.
+     */
+    protected function setUp(): void
+    {
+        $this->object = new Expression();
+    }
 }

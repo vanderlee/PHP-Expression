@@ -1,51 +1,65 @@
 <?php
 
-class BuiltinFunctionsTest extends PHPUnit_Framework_TestCase {
-	/**
-	 * @var Expression
-	 */
-	protected $object;
+use PHPUnit\Framework\TestCase;
+use Vanderlee\Expression\Exception;
+use Vanderlee\Expression\Expression;
 
-	/**
-	 * Sets up the fixture, for example, opens a network connection.
-	 * This method is called before a test is executed.
-	 */
-	protected function setUp() {		
-		$this->object = new Expression();
-	}
-	
-	/**
-	 * clearFunctions method removes all builtins
-	 */
-	public function testClearFunctions() {
-		
-		$this->assertEquals($this->object->evaluate('min(1,2)'), 1);
-		$this->object->clearFunctions();
-		$this->setExpectedException('ExpressionException');
-		$this->object->evaluate('min(1,2)');
-	}
+class BuiltinFunctionsTest extends TestCase
+{
+    /**
+     * @var Expression
+     */
+    protected $object;
 
-	/**
-	 * resetFunctions method restores builtins
-	 */
-	public function testResetFunctions() {
-		
-		$this->assertEquals($this->object->evaluate('min(1,2)'), 1);
-		$this->object->resetFunctions();
-		$this->assertEquals($this->object->evaluate('min(1,2)'), 1);
-	}
+    /**
+     * clearFunctions method removes all builtins
+     * @throws Exception
+     */
+    public function testClearFunctions()
+    {
+        $this->assertEquals(1, $this->object->evaluate('min(1,2)'));
+        $this->object->clearFunctions();
+        $this->expectException(Exception::class);
+        $this->object->evaluate('min(1,2)');
+    }
 
-	public function testMin() {
-		
-		$this->assertEquals($this->object->evaluate('min(1,2)'), 1);
-		$this->assertEquals($this->object->evaluate('min(2,1)'), 1);
-	}
+    /**
+     * resetFunctions method restores builtins
+     * @throws Exception
+     */
+    public function testResetFunctions()
+    {
+        $this->assertEquals(1, $this->object->evaluate('min(1,2)'));
+        $this->object->resetFunctions();
+        $this->assertEquals(1, $this->object->evaluate('min(1,2)'));
+    }
 
-	public function testMax() {
-		
-		$this->assertEquals($this->object->evaluate('max(1,2)'), 2);
-		$this->assertEquals($this->object->evaluate('max(2,1)'), 2);
-	}
+    /**
+     * @throws Exception
+     */
+    public function testMin()
+    {
+        $this->assertEquals(1, $this->object->evaluate('min(1,2)'));
+        $this->assertEquals(1, $this->object->evaluate('min(2,1)'));
+    }
 
-	// @todo more builtins
+    /**
+     * @throws Exception
+     */
+    public function testMax()
+    {
+        $this->assertEquals(2, $this->object->evaluate('max(1,2)'));
+        $this->assertEquals(2, $this->object->evaluate('max(2,1)'));
+    }
+
+    /**
+     * Sets up the fixture, for example, opens a network connection.
+     * This method is called before a test is executed.
+     */
+    protected function setUp(): void
+    {
+        $this->object = new Expression();
+    }
+
+    // @todo more builtins
 }

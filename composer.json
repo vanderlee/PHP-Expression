@@ -10,9 +10,14 @@
 		"source": "https://github.com/vanderlee/PHP-Expression/"
 	},
 	"require": {
-		"php": ">=5.2.0"
+		"php": ">=7.1"
+	},
+	"require-dev": {
+		"phpunit/phpunit": "9.*"
 	},
 	"autoload": {
-		"classmap": ["classes/"]
+		"psr-4": {
+			"Vanderlee\\Expression\\": "classes/"
+		}
 	}
 }

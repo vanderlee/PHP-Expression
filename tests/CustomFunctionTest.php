@@ -1,51 +1,75 @@
 <?php
 
-function test_custom_function($v) {
-	return $v * 3;
+use PHPUnit\Framework\TestCase;
+use Vanderlee\Expression\Exception;
+use Vanderlee\Expression\Expression;
+
+/** @noinspection PhpUnused */
+function test_custom_function($v)
+{
+    return $v * 3;
 }
 
-class CustomFunctionTest extends PHPUnit_Framework_TestCase {
+class CustomFunctionTest extends TestCase
+{
 
-	/**
-	 * @var Expression
-	 */
-	protected $object;
+    /**
+     * @var Expression
+     */
+    protected $object;
 
-	/**
-	 * Sets up the fixture, for example, opens a network connection.
-	 * This method is called before a test is executed.
-	 */
-	protected function setUp() {
-		$this->object = new Expression();
-	}
+    /**
+     * @throws Exception
+     */
+    public function testAddAndReset()
+    {
+        $this->object->addFunction('test_custom_function');
+        $this->assertEquals(6, $this->object->evaluate('test_custom_function(2)'));
+        $this->object->resetFunctions();
+        $this->expectException(Exception::class);
+        $this->object->evaluate('test_custom_function(2)');
+    }
 
-	public function testAddAndReset() {
-		$this->object->addFunction('test_custom_function');
-		$this->assertEquals($this->object->evaluate('test_custom_function(2)'), 6);
-		$this->object->resetFunctions();
-		$this->setExpectedException('ExpressionException');
-		$this->object->evaluate('test_custom_function(2)');
-	}
+    /**
+     * @throws Exception
+     */
+    public function testAddAndClear()
+    {
+        $this->object->addFunction('test_custom_function');
+        $this->assertEquals(6, $this->object->evaluate('test_custom_function(2)'));
+        $this->object->clearFunctions();
+        $this->expectException(Exception::class);
+        $this->object->evaluate('test_custom_function(2)');
+    }
 
-	public function testAddAndClear() {
-		$this->object->addFunction('test_custom_function');
-		$this->assertEquals($this->object->evaluate('test_custom_function(2)'), 6);
-		$this->object->clearFunctions();
-		$this->setExpectedException('ExpressionException');
-		$this->object->evaluate('test_custom_function(2)');
-	}
+    /**
+     * @throws Exception
+     */
+    public function testAddAlias()
+    {
+        $this->object->addFunction('tcf', 'test_custom_function');
+        $this->assertEquals(6, $this->object->evaluate('tcf(2)'));
+        $this->expectException(Exception::class);
+        $this->object->evaluate('test_custom_function(2)');
+    }
 
-	public function testAddAlias() {
-		$this->object->addFunction('tcf', 'test_custom_function');
-		$this->assertEquals($this->object->evaluate('tcf(2)'), 6);
-		$this->setExpectedException('ExpressionException');
-		$this->object->evaluate('test_custom_function(2)');
-	}
+    /**
+     * @throws Exception
+     */
+    public function testDefault()
+    {
+        $this->object->addFunction('test_custom_function');
+        $this->assertEquals(6, $this->object->evaluate('test_custom_function(2)'));
+        $this->assertEquals(6, $this->object->evaluate('test_custom_function(2)'));
+    }
 
-	public function testDefault() {
-		$this->object->addFunction('test_custom_function');
-		$this->assertEquals($this->object->evaluate('test_custom_function(2)'), 6);
-		$this->assertEquals($this->object->evaluate('test_custom_function(2)'), 6);
-	}
+    /**
+     * Sets up the fixture, for example, opens a network connection.
+     * This method is called before a test is executed.
+     */
+    protected function setUp(): void
+    {
+        $this->object = new Expression();
+    }
 
 }

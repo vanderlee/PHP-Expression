@@ -1,20 +1,17 @@
 <?php
+declare(strict_types=1);
 
-/*
- * @version 0.0.2
- * @author Martijn W. van der Lee (martijn-at-vanderlee-dot-com)
- * @copyright Copyright (c) 2011, Martijn W. van der Lee
- * @license http://www.opensource.org/licenses/mit-license.php
- */
+namespace Vanderlee\Expression;
+
+use Throwable;
+use Vanderlee\Expression\Unit\Unit;
 
 /**
- * Expression
- *
  * @author Martijn
  */
 class Expression
 {
-    private static $default_functions = array(
+    private static $default_functions = [
         'abs' => 'abs',
         'acos' => 'acos',
         'acosh' => 'acosh',
@@ -55,55 +52,25 @@ class Expression
         'sqrt' => 'sqrt',
         'tan' => 'tan',
         'tanh' => 'tanh',
-    );
+    ];
 
     /**
      * List of functions supported
      *
      * @var array
      */
-    private $functions = array();
+    private $functions = [];
 
     /**
      * List of unit suffixes and unitsize for conversion
      *
-     * @var Array map of suffix and unitsize
+     * @var Unit[] map of suffix and unitsize
      */
-    private $units = array();
+    private $units = [];
 
     public function __construct()
     {
         $this->resetFunctions();
-    }
-
-    public function addUnit($suffix, $unitsize = 1)
-    {
-        $this->units[$suffix] = $unitsize;
-    }
-
-    public function removeUnit($suffix)
-    {
-        unset($this->units[$suffix]);
-    }
-
-    public function clearUnits()
-    {
-        $this->units = array();
-    }
-
-    public function addFunction($alias, $function = null)
-    {
-        $this->functions[$alias] = $function ? $function : $alias;
-    }
-
-    public function removeFunction($alias)
-    {
-        unset($this->functions[$alias]);
-    }
-
-    public function clearFunctions()
-    {
-        $this->functions = array();
     }
 
     public function resetFunctions()
@@ -111,40 +78,48 @@ class Expression
         $this->functions = self::$default_functions;
     }
 
-    private function hexadecimalToDecimal($match)
+    public function addUnit(string $suffix, float $unitsize = 1.): void
     {
-        return hexdec($match[0]);
+        $this->units[$suffix] = $unitsize;
     }
 
-    private function binaryToDecimal($match)
+    public function removeUnit(string $suffix): void
     {
-        return bindec($match[0]);
+        unset($this->units[$suffix]);
     }
 
-    private function convertUnit($match)
+    public function clearUnits(): void
     {
-        $unit = $this->units[$match[2]];
-        return ($unit instanceof ExpressionUnitInterface) ? $unit->convert($match[1]) : $match[1] * $unit;
+        $this->units = [];
     }
 
-    private function mapFunction($match)
+    public function addFunction(string $alias, $function = null): void
     {
-        $function = $match[0];
-
-        if (isset($this->functions[$function])) {
-            return '\\' . $this->functions[$function];
-        }
-
-        throw new ExpressionException("illegal function '{$match[0]}'");
+        $this->functions[$alias] = $function ?: $alias;
     }
 
-    public function evaluate($expression)
+    public function removeFunction(string $alias): void
+    {
+        unset($this->functions[$alias]);
+    }
+
+    public function clearFunctions(): void
+    {
+        $this->functions = [];
+    }
+
+    /**
+     * @param string $expression
+     * @return float
+     * @throws Exception
+     */
+    public function evaluate(string $expression): float
     {
         // Convert hexadecimal to decimal
-        $expression = preg_replace_callback('~\b0x[[:xdigit:]]+\b~', array($this, 'hexadecimalToDecimal'), $expression);
+        $expression = preg_replace_callback('~\b0x[[:xdigit:]]+\b~', [$this, 'hexadecimalToDecimal'], $expression);
 
         // Convert binary to decimal
-        $expression = preg_replace_callback('~\b0b[01]+\b~', array($this, 'binaryToDecimal'), $expression);
+        $expression = preg_replace_callback('~\b0b[01]+\b~', [$this, 'binaryToDecimal'], $expression);
 
         // Convert units
         $units = &$this->units;
@@ -153,7 +128,7 @@ class Expression
             array_walk($suffixes, 'preg_quote');
             $suffix_string = join('|', $suffixes);
 
-            $expression = preg_replace_callback('~(-?(?:\d+\\.?\d*|\\.\d+))(' . $suffix_string . ')~i', array($this, 'convertUnit'), $expression);
+            $expression = preg_replace_callback('~(-?(?:\d+\\.?\d*|\\.\d+))(' . $suffix_string . ')~i', [$this, 'convertUnit'], $expression);
         }
 
         // boolean logic keywords
@@ -167,25 +142,25 @@ class Expression
 
         // Empty expression
         if ($expression === '') {
-            throw new ExpressionException('empty expression');
+            throw new Exception('empty expression');
         }
 
         // Illegal colons
         if (strpos($expression, ':') !== FALSE) {
-            throw new ExpressionException("illegal character ':'");
+            throw new Exception("illegal character ':'");
         }
 
         // Map function
-        $expression = preg_replace_callback('~\b[a-z_]\w*\b~i', array($this, 'mapFunction'), $expression);
+        $expression = preg_replace_callback('~\b[a-z_]\w*\b~i', [$this, 'mapFunction'], $expression);
 
         // Invalid function calls
         if (preg_match('~[a-z_][\w:]*(?![\(\w:])~i', $expression, $match) > 0) {
-            throw new ExpressionException("invalid function call '{$match[0]}'");
+            throw new Exception(sprintf('invalid function call `%s`', $match[0]));
         }
 
         // Illegal characters
         if (preg_match('~[^-e^+/%*&|<>!=.()0-9a-z,_:\\\\]~i', $expression, $match) > 0) {
-            throw new ExpressionException("illegal character '{$match[0]}'");
+            throw new Exception(sprintf('illegal character `%s`', $match[0]));
         }
 
         // Replace boolean operator 'xor'
@@ -194,25 +169,68 @@ class Expression
         return self::runExpression($expression);
     }
 
-    private static function runExpression($expression) {
+    /**
+     * @throws Exception
+     */
+    private static function runExpression(string $expression): float
+    {
         ob_start();
 
         try {
-            $result = floatval(eval("return({$expression});"));
-        } catch(Throwable $throwable) {
+            $result = floatval(eval(sprintf('return(%s);', $expression)));
+        } catch (Throwable $throwable) {
             ob_end_clean();
-            throw new ExpressionException($throwable->getMessage(), 0, $throwable);
+            throw new Exception($throwable->getMessage(), 0, $throwable);
         }
 
         if (ob_get_clean() !== '') {
-            throw new ExpressionException('syntax error');
+            throw new Exception('syntax error');
         }
 
         return $result;
     }
-}
 
-// PHP 5.3+ namespace alias
-if (function_exists('class_alias')) {
-    class_alias('Expression', 'Expression\Expression');
+    /**
+     * @param string[] $match
+     * @return float|int
+     */
+    private function hexadecimalToDecimal(array $match)
+    {
+        return hexdec($match[0]);
+    }
+
+    /**
+     * @param string[] $match
+     * @return float|int
+     */
+    private function binaryToDecimal(array $match)
+    {
+        return bindec($match[0]);
+    }
+
+    /**
+     * @param string[] $match
+     * @return float|int
+     */
+    private function convertUnit(array $match)
+    {
+        $unit = $this->units[$match[2]];
+        return ($unit instanceof Unit) ? $unit->convert(floatval($match[1])) : $match[1] * $unit;
+    }
+
+    /**
+     * @param string[] $match
+     * @return string
+     * @throws Exception
+     */
+    private function mapFunction(array $match): string
+    {
+        $function = $match[0];
+
+        if (isset($this->functions[$function])) {
+            return '\\' . $this->functions[$function];
+        }
+
+        throw new Exception(sprintf('illegal function `%s`', $match[0]));
+    }
 }

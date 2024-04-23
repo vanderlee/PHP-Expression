@@ -1,24 +1,34 @@
 <?php
+declare(strict_types=1);
 
-class ParenthesisTest extends PHPUnit_Framework_TestCase {
-	/**
-	 * @var Expression
-	 */
-	protected $object;
+use PHPUnit\Framework\TestCase;
+use Vanderlee\Expression\Expression;
 
-	/**
-	 * Sets up the fixture, for example, opens a network connection.
-	 * This method is called before a test is executed.
-	 */
-	protected function setUp() {		
-		$this->object = new Expression();
-	}
-	
-	public function testBalanced() {
-		
-		$this->assertEquals($this->object->evaluate('2+3*4'), 14);
-		$this->assertEquals($this->object->evaluate('(2+3)*4'), 20);
-		$this->assertEquals($this->object->evaluate('2+(3*4)'), 14);
-		$this->assertEquals($this->object->evaluate('((2)+((3)*(4)))'), 14);
-	}
+class ParenthesisTest extends TestCase
+{
+    /**
+     * @var Expression
+     */
+    protected $object;
+
+    /**
+     * @throws \Vanderlee\Expression\Exception
+     */
+    public function testBalanced()
+    {
+
+        $this->assertEquals(14, $this->object->evaluate('2+3*4'));
+        $this->assertEquals(20, $this->object->evaluate('(2+3)*4'));
+        $this->assertEquals(14, $this->object->evaluate('2+(3*4)'));
+        $this->assertEquals(14, $this->object->evaluate('((2)+((3)*(4)))'));
+    }
+
+    /**
+     * Sets up the fixture, for example, opens a network connection.
+     * This method is called before a test is executed.
+     */
+    protected function setUp(): void
+    {
+        $this->object = new Expression();
+    }
 }
