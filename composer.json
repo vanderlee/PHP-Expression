@@ -1,6 +1,6 @@
 {
 	"name": "vanderlee/expression",
-	"description": "Safe, `eval()`-based simple and extendable expression parser",
+	"description": "Safe, eval()-based simple and extendable expression parser",
 	"type": "library",
 	"keywords": ["expression", "parser", "eval", "math"],
 	"homepage": "https://github.com/vanderlee/PHP-Expression",
