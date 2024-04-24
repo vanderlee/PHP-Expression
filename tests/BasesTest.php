@@ -1,6 +1,7 @@
 <?php
 
 use PHPUnit\Framework\TestCase;
+use Vanderlee\Expression\Exception;
 use Vanderlee\Expression\Expression;
 
 class BasesTest extends TestCase
@@ -11,7 +12,16 @@ class BasesTest extends TestCase
     protected $object;
 
     /**
-     * @throws \Vanderlee\Expression\Exception
+     * Sets up the fixture, for example, opens a network connection.
+     * This method is called before a test is executed.
+     */
+    protected function setUp(): void
+    {
+        $this->object = new Expression();
+    }
+
+    /**
+     * @throws Exception
      */
     public function testDecimal()
     {
@@ -23,20 +33,23 @@ class BasesTest extends TestCase
     }
 
     /**
-     * @throws \Vanderlee\Expression\Exception
+     * @throws Exception
      */
     public function testOctal()
     {
-
         $this->assertEquals(0, $this->object->evaluate('0'));
         $this->assertEquals(1, $this->object->evaluate('01'));
+        $this->assertEquals(1, $this->object->evaluate('0o1'));
+        $this->assertEquals(1, $this->object->evaluate('0O1'));
         $this->assertEquals(8, $this->object->evaluate('010'));
+        $this->assertEquals(8, $this->object->evaluate('0o10'));
+        $this->assertEquals(8, $this->object->evaluate('0O10'));
         $this->assertEquals(64, $this->object->evaluate('0100'));
         $this->assertEquals(-64, $this->object->evaluate('-0100'));
     }
 
     /**
-     * @throws \Vanderlee\Expression\Exception
+     * @throws Exception
      */
     public function testHexadecimal()
     {
@@ -48,8 +61,9 @@ class BasesTest extends TestCase
         $this->assertEquals(-256, $this->object->evaluate('-0x100'));
     }
 
+
     /**
-     * @throws \Vanderlee\Expression\Exception
+     * @throws Exception
      */
     public function testBinary()
     {
@@ -62,11 +76,12 @@ class BasesTest extends TestCase
     }
 
     /**
-     * Sets up the fixture, for example, opens a network connection.
-     * This method is called before a test is executed.
+     * @throws Exception
      */
-    protected function setUp(): void
+    public function testUnderscoreDecimal()
     {
-        $this->object = new Expression();
+        $this->assertEquals(1000, $this->object->evaluate('1_000'));
+        $this->assertEquals(1000, $this->object->evaluate('100_0'));
+        $this->assertEquals(-1000, $this->object->evaluate('-10_00'));
     }
 }

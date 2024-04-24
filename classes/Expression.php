@@ -11,7 +11,7 @@ use Vanderlee\Expression\Unit\Unit;
  */
 class Expression
 {
-    private static $default_functions = [
+    private static $defaultFunctions = [
         'abs' => 'abs',
         'acos' => 'acos',
         'acosh' => 'acosh',
@@ -75,22 +75,7 @@ class Expression
 
     public function resetFunctions()
     {
-        $this->functions = self::$default_functions;
-    }
-
-    public function addUnit(string $suffix, float $unitsize = 1.): void
-    {
-        $this->units[$suffix] = $unitsize;
-    }
-
-    public function removeUnit(string $suffix): void
-    {
-        unset($this->units[$suffix]);
-    }
-
-    public function clearUnits(): void
-    {
-        $this->units = [];
+        $this->functions = self::$defaultFunctions;
     }
 
     public function addFunction(string $alias, $function = null): void
@@ -108,6 +93,21 @@ class Expression
         $this->functions = [];
     }
 
+    public function addUnit(string $suffix, float $unitsize = 1.): void
+    {
+        $this->units[$suffix] = $unitsize;
+    }
+
+    public function removeUnit(string $suffix): void
+    {
+        unset($this->units[$suffix]);
+    }
+
+    public function clearUnits(): void
+    {
+        $this->units = [];
+    }
+
     /**
      * @param string $expression
      * @return float
@@ -116,19 +116,36 @@ class Expression
     public function evaluate(string $expression): float
     {
         // Convert hexadecimal to decimal
-        $expression = preg_replace_callback('~\b0x[[:xdigit:]]+\b~', [$this, 'hexadecimalToDecimal'], $expression);
+        $expression = preg_replace_callback('~\b0x[[:xdigit:]]+\b~', function (array $match): float {
+            return hexdec($match[0]);
+        }, $expression);
 
         // Convert binary to decimal
-        $expression = preg_replace_callback('~\b0b[01]+\b~', [$this, 'binaryToDecimal'], $expression);
+        $expression = preg_replace_callback('~\b0b[01]+\b~', function (array $match): float {
+            return bindec($match[0]);
+        }, $expression);
+
+        // Convert octal to decimal
+        $expression = preg_replace_callback('~\b0[oO][0-7]+\b~', function (array $match): float {
+            return octdec($match[0]);
+        }, $expression);
+
+        // Underscore decimal to decimal (since PHP 7.4)
+        $expression = preg_replace_callback('~\b[1-9]\d*(?:_\d+)+\b~', function (array $match): float {
+            return floatval(str_replace('_', '', $match[0]));
+        }, $expression);
 
         // Convert units
-        $units = &$this->units;
-        if ($units) {
-            $suffixes = array_keys($units);
+        if ($this->units !== []) {
+            $suffixes = array_keys($this->units);
             array_walk($suffixes, 'preg_quote');
-            $suffix_string = join('|', $suffixes);
+            $suffixJoin = join('|', $suffixes);
 
-            $expression = preg_replace_callback('~(-?(?:\d+\\.?\d*|\\.\d+))(' . $suffix_string . ')~i', [$this, 'convertUnit'], $expression);
+            $expression = preg_replace_callback(
+                '~(-?(?:\d+\\.?\d*|\\.\d+))(' . $suffixJoin . ')~i',
+                [$this, 'convertUnit'],
+                $expression
+            );
         }
 
         // boolean logic keywords
@@ -142,25 +159,20 @@ class Expression
 
         // Empty expression
         if ($expression === '') {
-            throw new Exception('empty expression');
-        }
-
-        // Illegal colons
-        if (strpos($expression, ':') !== FALSE) {
-            throw new Exception("illegal character ':'");
+            throw new Exception('Empty expression');
         }
 
         // Map function
         $expression = preg_replace_callback('~\b[a-z_]\w*\b~i', [$this, 'mapFunction'], $expression);
 
         // Invalid function calls
-        if (preg_match('~[a-z_][\w:]*(?![\(\w:])~i', $expression, $match) > 0) {
-            throw new Exception(sprintf('invalid function call `%s`', $match[0]));
+        if (preg_match('~[a-z_][\w:]*(?![(\w:])~i', $expression, $match) > 0) {
+            throw new Exception(sprintf('Invalid function call `%s`', $match[0]));
         }
 
         // Illegal characters
-        if (preg_match('~[^-e^+/%*&|<>!=.()0-9a-z,_:\\\\]~i', $expression, $match) > 0) {
-            throw new Exception(sprintf('illegal character `%s`', $match[0]));
+        if (preg_match('~[^-^+/%*&|<>!=.()0-9a-z,_:\\\\]~i', $expression, $match) > 0) {
+            throw new Exception(sprintf('Illegal character `%s`', $match[0]));
         }
 
         // Replace boolean operator 'xor'
@@ -184,7 +196,7 @@ class Expression
         }
 
         if (ob_get_clean() !== '') {
-            throw new Exception('syntax error');
+            throw new Exception('Syntax error');
         }
 
         return $result;
@@ -193,29 +205,19 @@ class Expression
     /**
      * @param string[] $match
      * @return float|int
-     */
-    private function hexadecimalToDecimal(array $match)
-    {
-        return hexdec($match[0]);
-    }
-
-    /**
-     * @param string[] $match
-     * @return float|int
-     */
-    private function binaryToDecimal(array $match)
-    {
-        return bindec($match[0]);
-    }
-
-    /**
-     * @param string[] $match
-     * @return float|int
+     * @throws Exception
      */
     private function convertUnit(array $match)
     {
-        $unit = $this->units[$match[2]];
-        return ($unit instanceof Unit) ? $unit->convert(floatval($match[1])) : $match[1] * $unit;
+        $unit = $this->units[$match[2]] ?? null;
+
+        if (null === $unit) {
+            throw new Exception(sprintf('Undefined unit `%s`', $match[2]));
+        }
+
+        return ($unit instanceof Unit)
+            ? $unit->convert(floatval($match[1]))
+            : $match[1] * $unit;
     }
 
     /**
@@ -231,6 +233,6 @@ class Expression
             return '\\' . $this->functions[$function];
         }
 
-        throw new Exception(sprintf('illegal function `%s`', $match[0]));
+        throw new Exception(sprintf('Illegal function `%s`', $function));
     }
 }
