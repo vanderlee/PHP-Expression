@@ -1,7 +1,6 @@
 PHP-Expression
 ==============
-Version 1.0.2
-[![Build Status](https://travis-ci.org/vanderlee/PHP-Expression.svg)](https://travis-ci.org/vanderlee/PHP-Expression)
+Version 1.0.3
 
 Simple and fast PHP expression parser, based on secure use of eval().
 
