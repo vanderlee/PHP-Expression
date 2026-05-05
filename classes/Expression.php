@@ -3,19 +3,15 @@ declare(strict_types=1);
 
 namespace Vanderlee\Expression;
 
-use Throwable;
 use Vanderlee\Expression\Unit\Unit;
 
-/**
- * @author Martijn
- */
 class Expression
 {
     private const MAX_EXPRESSION_LENGTH = 4096;
     private const MAX_PARENTHESIS_DEPTH = 128;
     private const MAX_FUNCTION_CALLS = 128;
 
-    private static $defaultFunctions = [
+    private const DEFAULT_FUNCTIONS = [
         'abs' => 'abs',
         'acos' => 'acos',
         'acosh' => 'acosh',
@@ -59,16 +55,12 @@ class Expression
     ];
 
     /**
-     * List of functions supported
-     *
-     * @var array
+     * @var array<string, string>
      */
     private $functions = [];
 
     /**
-     * List of unit suffixes and unitsize for conversion
-     *
-     * @var Unit[] map of suffix and unitsize
+     * @var array<string, float|Unit>
      */
     private $units = [];
 
@@ -77,11 +69,15 @@ class Expression
         $this->resetFunctions();
     }
 
-    public function resetFunctions()
+    public function resetFunctions(): void
     {
-        $this->functions = self::$defaultFunctions;
+        $this->functions = self::DEFAULT_FUNCTIONS;
     }
 
+    /**
+     * @param mixed $function
+     * @throws Exception
+     */
     public function addFunction(string $alias, $function = null): void
     {
         $alias = $this->validateFunctionAlias($alias);
@@ -100,6 +96,10 @@ class Expression
         $this->functions = [];
     }
 
+    /**
+     * @param float|Unit $unitsize
+     * @throws Exception
+     */
     public function addUnit(string $suffix, $unitsize = 1.): void
     {
         if ($suffix === '') {
@@ -119,48 +119,43 @@ class Expression
         $this->units = [];
     }
 
-    /**
-     * @param string $expression
-     * @return float
-     * @throws Exception
-     */
     public function evaluate(string $expression): float
     {
         $this->assertWithinResourceLimits($expression);
 
         // Convert hexadecimal to decimal
-        $expression = preg_replace_callback('~\b0x[[:xdigit:]]+\b~', function (array $match): float {
+        $expression = preg_replace_callback('~\b0x[[:xdigit:]]+\b~', static function (array $match): float {
             return hexdec($match[0]);
         }, $expression);
 
         // Convert binary to decimal
-        $expression = preg_replace_callback('~\b0b[01]+\b~', function (array $match): float {
+        $expression = preg_replace_callback('~\b0b[01]+\b~', static function (array $match): float {
             return bindec($match[0]);
         }, $expression);
 
         // Convert octal to decimal
-        $expression = preg_replace_callback('~\b0[oO][0-7]+\b~', function (array $match): float {
+        $expression = preg_replace_callback('~\b0[oO][0-7]+\b~', static function (array $match): float {
             return octdec($match[0]);
         }, $expression);
 
         // Underscore decimal to decimal (since PHP 7.4)
-        $expression = preg_replace_callback('~\b[1-9]\d*(?:_\d+)+\b~', function (array $match): float {
+        $expression = preg_replace_callback('~\b[1-9]\d*(?:_\d+)+\b~', static function (array $match): float {
             return floatval(str_replace('_', '', $match[0]));
         }, $expression);
 
         // Convert units
         if ($this->units !== []) {
             $suffixes = array_keys($this->units);
-            usort($suffixes, function (string $left, string $right): int {
+            usort($suffixes, static function (string $left, string $right): int {
                 return strlen($right) <=> strlen($left);
             });
-            $suffixes = array_map(function (string $suffix): string {
+            $suffixes = array_map(static function (string $suffix): string {
                 return preg_quote($suffix, '~');
             }, $suffixes);
-            $suffix_string = implode('|', $suffixes);
+            $suffixPattern = implode('|', $suffixes);
 
             $expression = preg_replace_callback(
-                '~(-?(?:\d+\\.?\d*|\\.\d+))(' . $suffix_string . ')~i',
+                '~(-?(?:\d+\\.?\d*|\\.\d+))(' . $suffixPattern . ')~i',
                 [$this, 'convertUnit'],
                 $expression
             );
@@ -245,6 +240,7 @@ class Expression
     }
 
     /**
+     * @param mixed $function
      * @throws Exception
      */
     private function validateFunctionTarget($function): string
@@ -275,7 +271,7 @@ class Expression
 
         try {
             $result = floatval(eval(sprintf('return(%s);', $expression)));
-        } catch (Throwable $throwable) {
+        } catch (\Throwable $throwable) {
             ob_end_clean();
             throw new Exception($throwable->getMessage(), 0, $throwable);
         }
@@ -289,10 +285,9 @@ class Expression
 
     /**
      * @param string[] $match
-     * @return float|int
      * @throws Exception
      */
-    private function convertUnit(array $match)
+    private function convertUnit(array $match): float
     {
         $unit = $this->units[$match[2]] ?? null;
 

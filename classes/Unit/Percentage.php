@@ -3,12 +3,11 @@ declare(strict_types=1);
 
 namespace Vanderlee\Expression\Unit;
 
-/**
- * @author Martijn
- */
 class Percentage implements Unit
 {
-    /** @var float */
+    /**
+     * @var float
+     */
     private $range;
 
     public function __construct(float $range = 1.)
