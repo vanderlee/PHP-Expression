@@ -10,7 +10,7 @@ Compatible with PHP 7.1 and up.
 Using eval() is evil()
 ----------------------
 This class tries to expose a subset of PHP functionality not by removing the
-bad features, but by explicitely allowing only the good features.
+bad features, but by explicitly allowing only the good features.
 
 IF YOU FIND ANY (POTENTIAL) SECURITY ISSUE, PLEASE REPORT!
 
@@ -32,15 +32,15 @@ Things you are allowed to do
 Things we've added
 ------------------
 -	Binary numbers, using a `0b` prefix. i.e. `0b1001110`.
--	New functions/function aliasses.
+-	New functions/function aliases.
 -	Support to use number "types" using prefixes.
 -   Boolean operator `^^` for logical XOR (same as `xor`).
 -   Textual boolean operator `not` (same as `!`).
 
 Things you should NOT be able to do
 -----------------------------------
--	Access functions not explicitely permitted.
--	Access static classs method not explicitely permitted.
+-	Access functions not explicitly permitted.
+-	Access static classs method not explicitly permitted.
 -	Access class properties or functions.
 -	Access system constants.
 -	Access variables, local or global.
@@ -63,7 +63,7 @@ TODO
 
 Disclaimers
 -----------
-Though this class has been tested and independantly reviewed by several people,
+Though this class has been tested and independently reviewed by several people,
 I cannot make any absolute 100% guarantee that it cannot be hacked. If you find
 any potential security problem, please let us know.
 
