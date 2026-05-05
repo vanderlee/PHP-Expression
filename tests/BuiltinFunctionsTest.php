@@ -15,7 +15,7 @@ class BuiltinFunctionsTest extends TestCase
      * clearFunctions method removes all builtins
      * @throws Exception
      */
-    public function testClearFunctions()
+    public function testClearFunctions(): void
     {
         $this->assertEquals(1, $this->object->evaluate('min(1,2)'));
         $this->object->clearFunctions();
@@ -23,7 +23,7 @@ class BuiltinFunctionsTest extends TestCase
         $this->object->evaluate('min(1,2)');
     }
 
-    public function testRemoveFunction()
+    public function testRemoveFunction(): void
     {
         $this->assertEquals(1, $this->object->evaluate('min(1,2)'));
         $this->object->removeFunction('min');
@@ -36,7 +36,7 @@ class BuiltinFunctionsTest extends TestCase
      * resetFunctions method restores builtins
      * @throws Exception
      */
-    public function testResetFunctions()
+    public function testResetFunctions(): void
     {
         $this->assertEquals(1, $this->object->evaluate('min(1,2)'));
         $this->object->resetFunctions();
@@ -46,7 +46,7 @@ class BuiltinFunctionsTest extends TestCase
     /**
      * @throws Exception
      */
-    public function testMin()
+    public function testMin(): void
     {
         $this->assertEquals(1, $this->object->evaluate('min(1,2)'));
         $this->assertEquals(1, $this->object->evaluate('min(2,1)'));
@@ -55,13 +55,13 @@ class BuiltinFunctionsTest extends TestCase
     /**
      * @throws Exception
      */
-    public function testMax()
+    public function testMax(): void
     {
         $this->assertEquals(2, $this->object->evaluate('max(1,2)'));
         $this->assertEquals(2, $this->object->evaluate('max(2,1)'));
     }
 
-    public function testMathFunctions()
+    public function testMathFunctions(): void
     {
         $this->assertEquals(3, $this->object->evaluate('abs(-3)'));
         $this->assertEquals(2, $this->object->evaluate('ceil(1.2)'));

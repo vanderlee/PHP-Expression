@@ -7,6 +7,6 @@ class Decibel implements Unit
 {
     public function convert(float $amount): float
     {
-        return pow(10., $amount * .1);
+        return 10. ** ($amount * .1);
     }
 }

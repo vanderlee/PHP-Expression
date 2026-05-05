@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace Vanderlee\Expression;
 
+use Throwable;
 use Vanderlee\Expression\Unit\Unit;
 
 class Expression
@@ -271,7 +272,7 @@ class Expression
 
         try {
             $result = floatval(eval(sprintf('return(%s);', $expression)));
-        } catch (\Throwable $throwable) {
+        } catch (Throwable $throwable) {
             ob_end_clean();
             throw new Exception($throwable->getMessage(), 0, $throwable);
         }

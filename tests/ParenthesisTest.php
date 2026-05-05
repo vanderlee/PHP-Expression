@@ -14,7 +14,7 @@ class ParenthesisTest extends TestCase
     /**
      * @throws \Vanderlee\Expression\Exception
      */
-    public function testBalanced()
+    public function testBalanced(): void
     {
 
         $this->assertEquals(14, $this->object->evaluate('2+3*4'));

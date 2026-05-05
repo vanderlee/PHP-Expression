@@ -11,35 +11,35 @@ class HackAccessTest extends TestCase
      */
     protected $object;
 
-    public function testPhpFunction()
+    public function testPhpFunction(): void
     {
 
         $this->expectException(Exception::class);
         $this->object->evaluate('print(1)');
     }
 
-    public function testClassMethod()
+    public function testClassMethod(): void
     {
 
         $this->expectException(Exception::class);
         $this->object->evaluate('DateTime::getLastErrors()');
     }
 
-    public function testClassConstant()
+    public function testClassConstant(): void
     {
 
         $this->expectException(Exception::class);
         $this->object->evaluate('DateTime::ISO8601');
     }
 
-    public function testClassVariable()
+    public function testClassVariable(): void
     {
 
         $this->expectException(Exception::class);
         $this->object->evaluate('DateTime::$foo');
     }
 
-    public function testObjectMethod()
+    public function testObjectMethod(): void
     {
         /** @noinspection PhpUnusedLocalVariableInspection */
         $clazz = new DateTime;
@@ -47,7 +47,7 @@ class HackAccessTest extends TestCase
         $this->object->evaluate('$clazz->getTimestamp()');
     }
 
-    public function testObjectVariable()
+    public function testObjectVariable(): void
     {
         /** @noinspection PhpUnusedLocalVariableInspection */
         $clazz = new DateTime;

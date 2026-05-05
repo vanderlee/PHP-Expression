@@ -63,7 +63,8 @@
 
 
 	class FunctionCarrier {
-		public static function half($v) {
+		public static function half($v): float
+        {
 			return $v * .5;
 		}
 	}

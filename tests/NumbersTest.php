@@ -13,7 +13,7 @@ class NumbersTest extends TestCase
     /**
      * @throws \Vanderlee\Expression\Exception
      */
-    public function testPositiveInteger()
+    public function testPositiveInteger(): void
     {
 
         $this->assertEquals(0, $this->object->evaluate('0'));
@@ -24,7 +24,7 @@ class NumbersTest extends TestCase
     /**
      * @throws \Vanderlee\Expression\Exception
      */
-    public function testNegativeInteger()
+    public function testNegativeInteger(): void
     {
 
         $this->assertEquals(0, $this->object->evaluate('-0'));
@@ -35,7 +35,7 @@ class NumbersTest extends TestCase
     /**
      * @throws \Vanderlee\Expression\Exception
      */
-    public function testPositiveFloat()
+    public function testPositiveFloat(): void
     {
 
         $this->assertEquals(1.23, $this->object->evaluate('1.23'));
@@ -51,7 +51,7 @@ class NumbersTest extends TestCase
     /**
      * @throws \Vanderlee\Expression\Exception
      */
-    public function testNegativeFloat()
+    public function testNegativeFloat(): void
     {
 
         $this->assertEquals(-1.23, $this->object->evaluate('-1.23'));

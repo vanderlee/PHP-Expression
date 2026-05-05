@@ -14,7 +14,7 @@ class WhitespaceTest extends TestCase
     /**
      * @throws \Vanderlee\Expression\Exception
      */
-    public function testSingle()
+    public function testSingle(): void
     {
 
         $this->assertEquals(1, $this->object->evaluate('1'));
@@ -30,7 +30,7 @@ class WhitespaceTest extends TestCase
     /**
      * @throws \Vanderlee\Expression\Exception
      */
-    public function testMultiple()
+    public function testMultiple(): void
     {
 
         $this->assertEquals(2, $this->object->evaluate('1+1'));

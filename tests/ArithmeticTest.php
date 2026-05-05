@@ -18,7 +18,7 @@ class ArithmeticTest extends TestCase
     /**
      * @throws Exception
      */
-    public function testAddition()
+    public function testAddition(): void
     {
         $this->assertEquals(5, $this->object->evaluate('2+3'));
         $this->assertEquals(9, $this->object->evaluate('2+3+4'));
@@ -29,7 +29,7 @@ class ArithmeticTest extends TestCase
     /**
      * @throws Exception
      */
-    public function testSubtraction()
+    public function testSubtraction(): void
     {
         $this->assertEquals(1, $this->object->evaluate('3-2'));
         $this->assertEquals(-1, $this->object->evaluate('2-3'));
@@ -41,7 +41,7 @@ class ArithmeticTest extends TestCase
     /**
      * @throws Exception
      */
-    public function testMultiplication()
+    public function testMultiplication(): void
     {
         $this->assertEquals(6, $this->object->evaluate('2*3'));
         $this->assertEquals(24, $this->object->evaluate('2*3*4'));
@@ -52,14 +52,14 @@ class ArithmeticTest extends TestCase
     /**
      * @throws Exception
      */
-    public function testDivision()
+    public function testDivision(): void
     {
         $this->assertEquals(2, $this->object->evaluate('6/3'));
         $this->assertEquals(2, $this->object->evaluate('24/4/3'));
         $this->assertEquals(0, $this->object->evaluate('0/1'));
     }
 
-    public function testDivisionByZero()
+    public function testDivisionByZero(): void
     {
         $this->expectException(Exception::class);
         $this->expectExceptionMessage('Division by zero');
@@ -69,7 +69,7 @@ class ArithmeticTest extends TestCase
     /**
      * @throws Exception
      */
-    public function testModulo()
+    public function testModulo(): void
     {
         $this->assertEquals(0, $this->object->evaluate('12%1'));
         $this->assertEquals(0, $this->object->evaluate('12%2'));
@@ -81,7 +81,7 @@ class ArithmeticTest extends TestCase
         $this->assertEquals(4, $this->object->evaluate('12%8'));
     }
 
-    public function testModuleByZero()
+    public function testModuleByZero(): void
     {
         $this->expectException(Exception::class);
         $this->expectExceptionMessage('Modulo by zero');

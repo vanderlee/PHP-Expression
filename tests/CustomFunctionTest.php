@@ -21,7 +21,7 @@ class CustomFunctionTest extends TestCase
     /**
      * @throws Exception
      */
-    public function testAddAndReset()
+    public function testAddAndReset(): void
     {
         $this->object->addFunction('test_custom_function');
         $this->assertEquals(6, $this->object->evaluate('test_custom_function(2)'));
@@ -33,7 +33,7 @@ class CustomFunctionTest extends TestCase
     /**
      * @throws Exception
      */
-    public function testAddAndClear()
+    public function testAddAndClear(): void
     {
         $this->object->addFunction('test_custom_function');
         $this->assertEquals(6, $this->object->evaluate('test_custom_function(2)'));
@@ -45,7 +45,7 @@ class CustomFunctionTest extends TestCase
     /**
      * @throws Exception
      */
-    public function testAddAlias()
+    public function testAddAlias(): void
     {
         $this->object->addFunction('tcf', 'test_custom_function');
         $this->assertEquals(6, $this->object->evaluate('tcf(2)'));
@@ -56,35 +56,35 @@ class CustomFunctionTest extends TestCase
     /**
      * @throws Exception
      */
-    public function testDefault()
+    public function testDefault(): void
     {
         $this->object->addFunction('test_custom_function');
         $this->assertEquals(6, $this->object->evaluate('test_custom_function(2)'));
         $this->assertEquals(6, $this->object->evaluate('test_custom_function(2)'));
     }
 
-    public function testInvalidAlias()
+    public function testInvalidAlias(): void
     {
         $this->expectException(Exception::class);
         $this->expectExceptionMessage('Invalid function alias');
         $this->object->addFunction('test_custom_function();');
     }
 
-    public function testInvalidFunctionTarget()
+    public function testInvalidFunctionTarget(): void
     {
         $this->expectException(Exception::class);
         $this->expectExceptionMessage('Invalid function target');
         $this->object->addFunction('tcf', 'test_custom_function()');
     }
 
-    public function testNonCallableFunctionTarget()
+    public function testNonCallableFunctionTarget(): void
     {
         $this->expectException(Exception::class);
         $this->expectExceptionMessage('is not callable');
         $this->object->addFunction('tcf', 'missing_custom_function');
     }
 
-    public function testNonStringFunctionTarget()
+    public function testNonStringFunctionTarget(): void
     {
         $this->expectException(Exception::class);
         $this->expectExceptionMessage('Invalid function target');

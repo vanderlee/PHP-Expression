@@ -60,7 +60,7 @@ class BooleanLogicTest extends TestCase
      * @dataProvider dataBooleanLogic
      * @throws Exception
      */
-    public function testBooleanLogic($expression, $expected)
+    public function testBooleanLogic($expression, $expected): void
     {
         $this->assertEquals($expected, (bool)$this->object->evaluate($expression));
     }

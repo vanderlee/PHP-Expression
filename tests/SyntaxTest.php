@@ -41,41 +41,41 @@ class SyntaxTest extends TestCase
      * @param $expression
      * @throws Exception
      */
-    public function testSyntax($expression)
+    public function testSyntax($expression): void
     {
         $this->expectException(Exception::class);
         $this->object->evaluate($expression);
     }
 
-    public function testExpressionLengthLimit()
+    public function testExpressionLengthLimit(): void
     {
         $this->expectException(Exception::class);
         $this->expectExceptionMessage('expression too long');
         $this->object->evaluate(str_repeat('1+', 2048) . '1');
     }
 
-    public function testParenthesisDepthLimit()
+    public function testParenthesisDepthLimit(): void
     {
         $this->expectException(Exception::class);
         $this->expectExceptionMessage('expression too deeply nested');
         $this->object->evaluate(str_repeat('(', 129) . '1' . str_repeat(')', 129));
     }
 
-    public function testFunctionCallLimit()
+    public function testFunctionCallLimit(): void
     {
         $this->expectException(Exception::class);
         $this->expectExceptionMessage('too many function calls');
         $this->object->evaluate(str_repeat('pi()+', 129) . '1');
     }
 
-    public function testWhitespaceOnlyExpressionIsEmpty()
+    public function testWhitespaceOnlyExpressionIsEmpty(): void
     {
         $this->expectException(Exception::class);
         $this->expectExceptionMessage('Empty expression');
         $this->object->evaluate(" \t\r\n ");
     }
 
-    public function testFunctionOutputIsRejected()
+    public function testFunctionOutputIsRejected(): void
     {
         $this->object->addFunction('test_output_function');
 

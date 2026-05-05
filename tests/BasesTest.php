@@ -23,7 +23,7 @@ class BasesTest extends TestCase
     /**
      * @throws Exception
      */
-    public function testDecimal()
+    public function testDecimal(): void
     {
         $this->assertEquals(0, $this->object->evaluate('0'));
         $this->assertEquals(1, $this->object->evaluate('1'));
@@ -35,7 +35,7 @@ class BasesTest extends TestCase
     /**
      * @throws Exception
      */
-    public function testOctal()
+    public function testOctal(): void
     {
         $this->assertEquals(0, $this->object->evaluate('0'));
         $this->assertEquals(1, $this->object->evaluate('01'));
@@ -51,7 +51,7 @@ class BasesTest extends TestCase
     /**
      * @throws Exception
      */
-    public function testHexadecimal()
+    public function testHexadecimal(): void
     {
 
         $this->assertEquals(0, $this->object->evaluate('0x0'));
@@ -65,7 +65,7 @@ class BasesTest extends TestCase
     /**
      * @throws Exception
      */
-    public function testBinary()
+    public function testBinary(): void
     {
 
         $this->assertEquals(0, $this->object->evaluate('0b0'));
@@ -78,7 +78,7 @@ class BasesTest extends TestCase
     /**
      * @throws Exception
      */
-    public function testUnderscoreDecimal()
+    public function testUnderscoreDecimal(): void
     {
         $this->assertEquals(1000, $this->object->evaluate('1_000'));
         $this->assertEquals(1000, $this->object->evaluate('100_0'));

@@ -71,7 +71,7 @@ class ComparisonTest extends TestCase
      * @dataProvider dataComparison
      * @throws Exception
      */
-    public function testComparison($expression, $expected)
+    public function testComparison($expression, $expected): void
     {
         $this->assertEquals($expected, $this->object->evaluate($expression));
     }
@@ -81,7 +81,7 @@ class ComparisonTest extends TestCase
      * @requires PHP 7
      * @throws Exception
      */
-    public function testSpaceship($expression, $expected)
+    public function testSpaceship($expression, $expected): void
     {
         $this->assertEquals($expected, $this->object->evaluate($expression));
     }
