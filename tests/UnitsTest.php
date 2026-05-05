@@ -4,6 +4,8 @@ declare(strict_types=1);
 use PHPUnit\Framework\TestCase;
 use Vanderlee\Expression\Exception;
 use Vanderlee\Expression\Expression;
+use Vanderlee\Expression\Unit\Decibel;
+use Vanderlee\Expression\Unit\Percentage;
 
 class UnitsTest extends TestCase
 {
@@ -36,6 +38,101 @@ class UnitsTest extends TestCase
         $this->object->addUnit('u', 10);
         $this->expectException(Exception::class);
         $this->object->evaluate('.u');
+    }
+
+    public function testEmptyUnitSuffix()
+    {
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('empty unit suffix');
+        $this->object->addUnit('', 10);
+    }
+
+    public function testUnitSuffixIsMatchedLiterally()
+    {
+        $this->object->addUnit('u+', 10);
+        $this->assertEquals(20, $this->object->evaluate('2u+'));
+    }
+
+    public function testRegexUnitSuffixDoesNotOvermatch()
+    {
+        $this->object->addUnit('.*', 10);
+        $this->expectException(Exception::class);
+        $this->object->evaluate('3abc');
+    }
+
+    public function testCaseMismatchedUnitSuffixIsRejected()
+    {
+        $this->object->addUnit('dB', 10);
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('Undefined unit `db`');
+        $this->object->evaluate('1db');
+    }
+
+    public function testLongestUnitSuffixIsMatchedFirst()
+    {
+        $this->object->addUnit('m', 10);
+        $this->object->addUnit('mm', 100);
+        $this->assertEquals(220, $this->object->evaluate('2mm+2m'));
+    }
+
+    public function testRemoveUnit()
+    {
+        $this->object->addUnit('u', 10);
+        $this->assertEquals(20, $this->object->evaluate('2u'));
+
+        $this->object->removeUnit('u');
+
+        $this->expectException(Exception::class);
+        $this->object->evaluate('2u');
+    }
+
+    public function testClearUnits()
+    {
+        $this->object->addUnit('u', 10);
+        $this->object->addUnit('v', 20);
+        $this->assertEquals(60, $this->object->evaluate('2u+2v'));
+
+        $this->object->clearUnits();
+
+        $this->expectException(Exception::class);
+        $this->object->evaluate('2u');
+    }
+
+    public function testPercentageUnit()
+    {
+        $percentage = new Percentage(200);
+
+        $this->assertEquals(50, $percentage->convert(25));
+
+        $percentage->set(400);
+
+        $this->assertEquals(100, $percentage->convert(25));
+    }
+
+    public function testPercentageUnitIntegration()
+    {
+        $this->object->addUnit('%', new Percentage(200));
+
+        $this->assertEquals(100, $this->object->evaluate('50%'));
+        $this->assertEquals(125, $this->object->evaluate('50%+25'));
+    }
+
+    public function testDecibelUnit()
+    {
+        $decibel = new Decibel();
+
+        $this->assertEquals(1, $decibel->convert(0));
+        $this->assertEquals(10, $decibel->convert(10));
+        $this->assertEquals(100, $decibel->convert(20));
+    }
+
+    public function testDecibelUnitIntegration()
+    {
+        $this->object->addUnit('dB', new Decibel());
+
+        $this->assertEquals(1, $this->object->evaluate('0dB'));
+        $this->assertEquals(10, $this->object->evaluate('10dB'));
     }
 
     /**

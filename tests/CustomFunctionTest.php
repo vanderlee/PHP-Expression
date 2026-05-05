@@ -63,6 +63,34 @@ class CustomFunctionTest extends TestCase
         $this->assertEquals(6, $this->object->evaluate('test_custom_function(2)'));
     }
 
+    public function testInvalidAlias()
+    {
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('Invalid function alias');
+        $this->object->addFunction('test_custom_function();');
+    }
+
+    public function testInvalidFunctionTarget()
+    {
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('Invalid function target');
+        $this->object->addFunction('tcf', 'test_custom_function()');
+    }
+
+    public function testNonCallableFunctionTarget()
+    {
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('is not callable');
+        $this->object->addFunction('tcf', 'missing_custom_function');
+    }
+
+    public function testNonStringFunctionTarget()
+    {
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('Invalid function target');
+        $this->object->addFunction('tcf', ['test_custom_function']);
+    }
+
     /**
      * Sets up the fixture, for example, opens a network connection.
      * This method is called before a test is executed.

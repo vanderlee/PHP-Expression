@@ -5,6 +5,12 @@ use PHPUnit\Framework\TestCase;
 use Vanderlee\Expression\Exception;
 use Vanderlee\Expression\Expression;
 
+function test_output_function(): int
+{
+    echo 'output';
+    return 1;
+}
+
 class SyntaxTest extends TestCase
 {
     /**
@@ -39,6 +45,43 @@ class SyntaxTest extends TestCase
     {
         $this->expectException(Exception::class);
         $this->object->evaluate($expression);
+    }
+
+    public function testExpressionLengthLimit()
+    {
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('expression too long');
+        $this->object->evaluate(str_repeat('1+', 2048) . '1');
+    }
+
+    public function testParenthesisDepthLimit()
+    {
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('expression too deeply nested');
+        $this->object->evaluate(str_repeat('(', 129) . '1' . str_repeat(')', 129));
+    }
+
+    public function testFunctionCallLimit()
+    {
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('too many function calls');
+        $this->object->evaluate(str_repeat('pi()+', 129) . '1');
+    }
+
+    public function testWhitespaceOnlyExpressionIsEmpty()
+    {
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('Empty expression');
+        $this->object->evaluate(" \t\r\n ");
+    }
+
+    public function testFunctionOutputIsRejected()
+    {
+        $this->object->addFunction('test_output_function');
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('Syntax error');
+        $this->object->evaluate('test_output_function()');
     }
 
     /**

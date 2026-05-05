@@ -11,6 +11,10 @@ use Vanderlee\Expression\Unit\Unit;
  */
 class Expression
 {
+    private const MAX_EXPRESSION_LENGTH = 4096;
+    private const MAX_PARENTHESIS_DEPTH = 128;
+    private const MAX_FUNCTION_CALLS = 128;
+
     private static $defaultFunctions = [
         'abs' => 'abs',
         'acos' => 'acos',
@@ -80,7 +84,10 @@ class Expression
 
     public function addFunction(string $alias, $function = null): void
     {
-        $this->functions[$alias] = $function ?: $alias;
+        $alias = $this->validateFunctionAlias($alias);
+        $function = $this->validateFunctionTarget($function ?: $alias);
+
+        $this->functions[$alias] = $function;
     }
 
     public function removeFunction(string $alias): void
@@ -93,8 +100,12 @@ class Expression
         $this->functions = [];
     }
 
-    public function addUnit(string $suffix, float $unitsize = 1.): void
+    public function addUnit(string $suffix, $unitsize = 1.): void
     {
+        if ($suffix === '') {
+            throw new Exception('empty unit suffix');
+        }
+
         $this->units[$suffix] = $unitsize;
     }
 
@@ -115,6 +126,8 @@ class Expression
      */
     public function evaluate(string $expression): float
     {
+        $this->assertWithinResourceLimits($expression);
+
         // Convert hexadecimal to decimal
         $expression = preg_replace_callback('~\b0x[[:xdigit:]]+\b~', function (array $match): float {
             return hexdec($match[0]);
@@ -138,11 +151,16 @@ class Expression
         // Convert units
         if ($this->units !== []) {
             $suffixes = array_keys($this->units);
-            array_walk($suffixes, 'preg_quote');
-            $suffixJoin = join('|', $suffixes);
+            usort($suffixes, function (string $left, string $right): int {
+                return strlen($right) <=> strlen($left);
+            });
+            $suffixes = array_map(function (string $suffix): string {
+                return preg_quote($suffix, '~');
+            }, $suffixes);
+            $suffix_string = implode('|', $suffixes);
 
             $expression = preg_replace_callback(
-                '~(-?(?:\d+\\.?\d*|\\.\d+))(' . $suffixJoin . ')~i',
+                '~(-?(?:\d+\\.?\d*|\\.\d+))(' . $suffix_string . ')~i',
                 [$this, 'convertUnit'],
                 $expression
             );
@@ -156,6 +174,8 @@ class Expression
 
         // Remove any whitespace
         $expression = strtolower(preg_replace('~\s+~', '', $expression));
+
+        $this->assertWithinResourceLimits($expression);
 
         // Empty expression
         if ($expression === '') {
@@ -179,6 +199,71 @@ class Expression
         $expression = str_replace('^^', ' xor ', $expression);
 
         return self::runExpression($expression);
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function assertWithinResourceLimits(string $expression): void
+    {
+        if (strlen($expression) > self::MAX_EXPRESSION_LENGTH) {
+            throw new Exception('expression too long');
+        }
+
+        $depth = 0;
+        $maxDepth = 0;
+        $length = strlen($expression);
+
+        for ($index = 0; $index < $length; ++$index) {
+            if ($expression[$index] === '(') {
+                ++$depth;
+                $maxDepth = max($maxDepth, $depth);
+            } elseif ($expression[$index] === ')') {
+                --$depth;
+            }
+        }
+
+        if ($maxDepth > self::MAX_PARENTHESIS_DEPTH) {
+            throw new Exception('expression too deeply nested');
+        }
+
+        if (preg_match_all('~\b[a-z_]\w*\s*\(~i', $expression) > self::MAX_FUNCTION_CALLS) {
+            throw new Exception('too many function calls');
+        }
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function validateFunctionAlias(string $alias): string
+    {
+        if (preg_match('~^[a-z_]\w*$~i', $alias) !== 1) {
+            throw new Exception(sprintf('Invalid function alias `%s`', $alias));
+        }
+
+        return strtolower($alias);
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function validateFunctionTarget($function): string
+    {
+        if (!is_string($function)) {
+            throw new Exception('Invalid function target');
+        }
+
+        if (preg_match('~^[a-z_]\w*$~i', $function) !== 1
+            && preg_match('~^(?:[a-z_]\w*\\\\)*[a-z_]\w*::[a-z_]\w*$~i', $function) !== 1
+        ) {
+            throw new Exception(sprintf('Invalid function target `%s`', $function));
+        }
+
+        if (!is_callable($function)) {
+            throw new Exception(sprintf('Function target `%s` is not callable', $function));
+        }
+
+        return $function;
     }
 
     /**

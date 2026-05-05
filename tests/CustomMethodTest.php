@@ -68,6 +68,20 @@ class CustomMethodTest extends TestCase
         $this->assertEquals(6, $this->object->evaluate('test_custom_method(2)'));
     }
 
+    public function testInvalidMethodTarget()
+    {
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('Invalid function target');
+        $this->object->addFunction('tcm', 'test_custom_methods_class::$test_custom_method');
+    }
+
+    public function testNonCallableMethodTarget()
+    {
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('is not callable');
+        $this->object->addFunction('tcm', 'test_custom_methods_class::missing_custom_method');
+    }
+
     /**
      * Sets up the fixture, for example, opens a network connection.
      * This method is called before a test is executed.
