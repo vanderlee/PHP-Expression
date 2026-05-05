@@ -66,6 +66,11 @@ class Expression
      */
     private $units = [];
 
+    /**
+     * @var string|null
+     */
+    private $unitSuffixPattern;
+
     public function __construct()
     {
         $this->resetFunctions();
@@ -144,68 +149,64 @@ class Expression
         }
 
         $this->units[$suffix] = $unitsize;
+        $this->unitSuffixPattern = null;
     }
 
     public function removeUnit(string $suffix): void
     {
         unset($this->units[$suffix]);
+        $this->unitSuffixPattern = null;
     }
 
     public function clearUnits(): void
     {
         $this->units = [];
+        $this->unitSuffixPattern = null;
     }
 
     public function evaluate(string $expression): float
     {
-        $this->assertWithinResourceLimits($expression);
+        $this->assertWithinExpressionLength($expression);
 
-        // Convert hexadecimal to decimal
-        $expression = preg_replace_callback('~\b0x[[:xdigit:]]+\b~', static function (array $match): float {
-            return hexdec($match[0]);
-        }, $expression);
+        // Normalize non-decimal and underscore decimal literals.
+        $expression = preg_replace_callback(
+            '~\b(?:0x[[:xdigit:]]+|0b[01]+|0[oO][0-7]+|[1-9]\d*(?:_\d+)+)\b~',
+            static function (array $match): string {
+                $literal = $match[0];
+                $prefix = strtolower(substr($literal, 0, 2));
 
-        // Convert binary to decimal
-        $expression = preg_replace_callback('~\b0b[01]+\b~', static function (array $match): float {
-            return bindec($match[0]);
-        }, $expression);
+                if ($prefix === '0x') {
+                    return (string) hexdec($literal);
+                }
 
-        // Convert octal to decimal
-        $expression = preg_replace_callback('~\b0[oO][0-7]+\b~', static function (array $match): float {
-            return octdec($match[0]);
-        }, $expression);
+                if ($prefix === '0b') {
+                    return (string) bindec($literal);
+                }
 
-        // Underscore decimal to decimal (since PHP 7.4)
-        $expression = preg_replace_callback('~\b[1-9]\d*(?:_\d+)+\b~', static function (array $match): float {
-            return floatval(str_replace('_', '', $match[0]));
-        }, $expression);
+                if ($prefix === '0o') {
+                    return (string) octdec($literal);
+                }
+
+                return (string) floatval(str_replace('_', '', $literal));
+            },
+            $expression
+        );
 
         // Convert units
         if ($this->units !== []) {
-            $suffixes = array_keys($this->units);
-            usort($suffixes, static function (string $left, string $right): int {
-                return strlen($right) <=> strlen($left);
-            });
-            $suffixes = array_map(static function (string $suffix): string {
-                return preg_quote($suffix, '~');
-            }, $suffixes);
-            $suffixPattern = implode('|', $suffixes);
-
             $expression = preg_replace_callback(
-                '~(-?(?:\d+\\.?\d*|\\.\d+))(' . $suffixPattern . ')~i',
+                '~(-?(?:\d+\\.?\d*|\\.\d+))(' . $this->getUnitSuffixPattern() . ')~i',
                 [$this, 'convertUnit'],
                 $expression
             );
         }
 
-        // boolean logic keywords
-        $expression = preg_replace('~\band\b~', '&&', $expression);
-        $expression = preg_replace('~\bor\b~', '||', $expression);
-        $expression = preg_replace('~\bnot\b~', '!', $expression);
-        $expression = preg_replace('~\bxor\b~', '^^', $expression);
-
-        // Remove any whitespace
-        $expression = strtolower(preg_replace('~\s+~', '', $expression));
+        // Normalize boolean logic keywords and remove whitespace.
+        $expression = strtolower(preg_replace(
+            ['~\band\b~', '~\bor\b~', '~\bnot\b~', '~\bxor\b~', '~\s+~'],
+            ['&&', '||', '!', '^^', ''],
+            $expression
+        ));
 
         $this->assertWithinResourceLimits($expression);
 
@@ -236,11 +237,19 @@ class Expression
     /**
      * @throws Exception
      */
-    private function assertWithinResourceLimits(string $expression): void
+    private function assertWithinExpressionLength(string $expression): void
     {
         if (strlen($expression) > self::MAX_EXPRESSION_LENGTH) {
             throw new Exception('expression too long');
         }
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function assertWithinResourceLimits(string $expression): void
+    {
+        $this->assertWithinExpressionLength($expression);
 
         $depth = 0;
         $maxDepth = 0;
@@ -272,7 +281,7 @@ class Expression
         ob_start();
 
         try {
-            $result = floatval(eval(sprintf('return(%s);', $expression)));
+            $result = floatval(eval('return(' . $expression . ');'));
         } catch (Throwable $throwable) {
             ob_end_clean();
             throw new Exception($throwable->getMessage(), 0, $throwable);
@@ -283,6 +292,23 @@ class Expression
         }
 
         return $result;
+    }
+
+    private function getUnitSuffixPattern(): string
+    {
+        if ($this->unitSuffixPattern !== null) {
+            return $this->unitSuffixPattern;
+        }
+
+        $suffixes = array_keys($this->units);
+        usort($suffixes, static function (string $left, string $right): int {
+            return strlen($right) <=> strlen($left);
+        });
+        $suffixes = array_map(static function (string $suffix): string {
+            return preg_quote($suffix, '~');
+        }, $suffixes);
+
+        return $this->unitSuffixPattern = implode('|', $suffixes);
     }
 
     /**
