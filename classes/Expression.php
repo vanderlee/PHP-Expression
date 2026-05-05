@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Vanderlee\Expression;
@@ -85,6 +86,41 @@ class Expression
         $function = $this->validateFunctionTarget($function ?: $alias);
 
         $this->functions[$alias] = $function;
+    }
+
+    /**
+     * @throws Exception
+     */
+    private function validateFunctionAlias(string $alias): string
+    {
+        if (preg_match('~^[a-z_]\w*$~i', $alias) !== 1) {
+            throw new Exception(sprintf('Invalid function alias `%s`', $alias));
+        }
+
+        return strtolower($alias);
+    }
+
+    /**
+     * @param mixed $function
+     * @throws Exception
+     */
+    private function validateFunctionTarget($function): string
+    {
+        if (!is_string($function)) {
+            throw new Exception('Invalid function target');
+        }
+
+        if (preg_match('~^[a-z_]\w*$~i', $function) !== 1
+            && preg_match('~^(?:[a-z_]\w*\\\\)*[a-z_]\w*::[a-z_]\w*$~i', $function) !== 1
+        ) {
+            throw new Exception(sprintf('Invalid function target `%s`', $function));
+        }
+
+        if (!is_callable($function)) {
+            throw new Exception(sprintf('Function target `%s` is not callable', $function));
+        }
+
+        return $function;
     }
 
     public function removeFunction(string $alias): void
@@ -226,41 +262,6 @@ class Expression
         if (preg_match_all('~\b[a-z_]\w*\s*\(~i', $expression) > self::MAX_FUNCTION_CALLS) {
             throw new Exception('too many function calls');
         }
-    }
-
-    /**
-     * @throws Exception
-     */
-    private function validateFunctionAlias(string $alias): string
-    {
-        if (preg_match('~^[a-z_]\w*$~i', $alias) !== 1) {
-            throw new Exception(sprintf('Invalid function alias `%s`', $alias));
-        }
-
-        return strtolower($alias);
-    }
-
-    /**
-     * @param mixed $function
-     * @throws Exception
-     */
-    private function validateFunctionTarget($function): string
-    {
-        if (!is_string($function)) {
-            throw new Exception('Invalid function target');
-        }
-
-        if (preg_match('~^[a-z_]\w*$~i', $function) !== 1
-            && preg_match('~^(?:[a-z_]\w*\\\\)*[a-z_]\w*::[a-z_]\w*$~i', $function) !== 1
-        ) {
-            throw new Exception(sprintf('Invalid function target `%s`', $function));
-        }
-
-        if (!is_callable($function)) {
-            throw new Exception(sprintf('Function target `%s` is not callable', $function));
-        }
-
-        return $function;
     }
 
     /**
