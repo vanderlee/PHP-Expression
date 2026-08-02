@@ -130,7 +130,7 @@ class Expression
 
     public function removeFunction(string $alias): void
     {
-        unset($this->functions[$alias]);
+        unset($this->functions[strtolower($alias)]);
     }
 
     public function clearFunctions(): void
@@ -170,7 +170,7 @@ class Expression
 
         // Normalize non-decimal and underscore decimal literals.
         $expression = preg_replace_callback(
-            '~\b(?:0x[[:xdigit:]]+|0b[01]+|0[oO][0-7]+|[1-9]\d*(?:_\d+)+)\b~',
+            '~\b(?:0x[[:xdigit:]]+|0b[01]+|0[oO][0-7]+|[1-9]\d*(?:_\d+)+)\b~i',
             static function (array $match): string {
                 $literal = $match[0];
                 $prefix = strtolower(substr($literal, 0, 2));
