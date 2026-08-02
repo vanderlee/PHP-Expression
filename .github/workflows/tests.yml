@@ -34,6 +34,8 @@ jobs:
             composer: 'v2'
           - php-version: '8.4'
             composer: 'v2'
+          - php-version: '8.5'
+            composer: 'v2'
 
     steps:
       - name: Checkout
