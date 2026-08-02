@@ -1,23 +1,26 @@
 {
-	"name": "vanderlee/expression",
-	"description": "Safe, eval()-based simple and extendable expression parser",
-	"type": "library",
-	"keywords": ["expression", "parser", "eval", "math"],
-	"homepage": "https://github.com/vanderlee/PHP-Expression",
-	"license": "MIT",
-	"support": {
-		"issues": "https://github.com/vanderlee/PHP-Expression/issues",
-		"source": "https://github.com/vanderlee/PHP-Expression/"
-	},
-	"require": {
-		"php": ">=7.1"
-	},
-	"require-dev": {
-		"phpunit/phpunit": "^9.6.34"
-	},
-	"autoload": {
-		"psr-4": {
-			"Vanderlee\\Expression\\": "classes/"
-		}
-	}
+    "name": "vanderlee/expression",
+    "description": "Safe, eval()-based simple and extendable expression parser",
+    "type": "library",
+    "keywords": ["expression", "parser", "eval", "math"],
+    "homepage": "https://github.com/vanderlee/PHP-Expression",
+    "license": "MIT",
+    "support": {
+        "issues": "https://github.com/vanderlee/PHP-Expression/issues",
+        "source": "https://github.com/vanderlee/PHP-Expression/"
+    },
+    "require": {
+        "php": ">=7.1"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^7.5 || ^9.6"
+    },
+    "autoload": {
+        "psr-4": {
+            "Vanderlee\\Expression\\": "classes/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
+    }
 }
