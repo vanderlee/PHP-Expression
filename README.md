@@ -1,6 +1,6 @@
 PHP-Expression
 ==============
-Version 1.0.3
+Version 1.1.0
 
 Simple and fast PHP expression parser, based on secure use of eval().
 
