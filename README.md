@@ -23,7 +23,8 @@ Things you are allowed to do
 -	Use most basic math functions such as `abs()`, `min()`, `max()` and `sqrt()`.
 -	Use basic arithmetic operators `+`, `-`, `*`, `/` and `%`.
 -	Use parenthesis.
--	Use comparisons (`true`/`false` returns `1`/`0` decimal).
+-	Use comparisons (results return `1`/`0` decimal).
+-	Use `true` and `false` boolean literals (returned as `1` and `0`).
 -	Use boolean operators in comparisons.
 -	Use bitwise operators.
 -   Use textual boolean operators like `and`, `xor` and `or`
