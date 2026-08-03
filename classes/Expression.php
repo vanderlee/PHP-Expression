@@ -13,6 +13,11 @@ class Expression
     private const MAX_PARENTHESIS_DEPTH = 128;
     private const MAX_FUNCTION_CALLS = 128;
 
+    private const BOOLEAN_LITERALS = [
+        'false' => '0',
+        'true' => '1',
+    ];
+
     private const DEFAULT_FUNCTIONS = [
         'abs' => 'abs',
         'acos' => 'acos',
@@ -336,6 +341,10 @@ class Expression
     private function mapFunction(array $match): string
     {
         $function = $match[0];
+
+        if (isset(self::BOOLEAN_LITERALS[$function])) {
+            return self::BOOLEAN_LITERALS[$function];
+        }
 
         if (isset($this->functions[$function])) {
             return '\\' . $this->functions[$function];

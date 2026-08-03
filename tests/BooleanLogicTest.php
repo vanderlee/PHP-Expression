@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 use PHPUnit\Framework\TestCase;
+use Vanderlee\Expression\Exception;
 use Vanderlee\Expression\Expression;
 
 class BooleanLogicTest extends TestCase
@@ -64,6 +65,59 @@ class BooleanLogicTest extends TestCase
     public function testBooleanLogic($expression, $expected): void
     {
         $this->assertEquals($expected, (bool)$this->object->evaluate($expression));
+    }
+
+    public static function dataBooleanLiterals(): array
+    {
+        return [
+            ['false', 0.0],
+            ['true', 1.0],
+            ['FALSE', 0.0],
+            ['TRUE', 1.0],
+            ['FaLsE', 0.0],
+            ['TrUe', 1.0],
+            ['!false', 1.0],
+            ['not true', 0.0],
+            ['true && false', 0.0],
+            ['true and true', 1.0],
+            ['false || true', 1.0],
+            ['false or false', 0.0],
+            ['true ^^ false', 1.0],
+            ['true xor true', 0.0],
+            ['(true or false) and not false', 1.0],
+            ['true == 1', 1.0],
+            ['false == 0', 1.0],
+        ];
+    }
+
+    /**
+     * @dataProvider dataBooleanLiterals
+     * @throws Exception
+     */
+    public function testBooleanLiterals(string $expression, float $expected): void
+    {
+        $this->assertSame($expected, $this->object->evaluate($expression));
+    }
+
+    public static function dataInvalidBooleanLiteralUsage(): array
+    {
+        return [
+            ['truevalue'],
+            ['false_value'],
+            ['1true'],
+            ['false1'],
+            ['true()'],
+            ['false()'],
+        ];
+    }
+
+    /**
+     * @dataProvider dataInvalidBooleanLiteralUsage
+     */
+    public function testBooleanLiteralsAreOnlyAcceptedAsWholeValueTokens(string $expression): void
+    {
+        $this->expectException(Exception::class);
+        $this->object->evaluate($expression);
     }
 
     protected function setUp(): void
