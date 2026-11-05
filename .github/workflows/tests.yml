@@ -49,6 +49,7 @@ jobs:
         with:
           php-version: ${{ matrix.php-version }}
           coverage: none
+          extensions: bcmath
           tools: composer:${{ matrix.composer }}
 
       - name: Validate Composer configuration
