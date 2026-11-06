@@ -103,7 +103,7 @@ class SecurityPolicyTest extends TestCase
     public function testUnitMultiplicationOverflowIsRejected(): void
     {
         $expression = new Expression();
-        $expression->addUnit('u', PHP_FLOAT_MAX);
+        $expression->addUnit('u', 1e308);
         $this->expectException(Exception::class);
         $this->expectExceptionMessage('unit conversion result must be finite');
         $expression->evaluate('2u');

@@ -57,7 +57,7 @@ class FloatingPointTest extends TestCase
 
     public function testUnitReplacementIgnoresLocaleDecimalSeparator(): void
     {
-        $locale = setlocale(LC_NUMERIC, 0);
+        $locale = setlocale(LC_NUMERIC, '0');
         try {
             $selected = setlocale(
                 LC_NUMERIC,
