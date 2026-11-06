@@ -20,6 +20,7 @@ class Expression
 {
     private const MAX_UNIT_COUNT = 128;
     private const MAX_UNIT_SUFFIX_LENGTH = 64;
+    private const MAX_COMPILED_SOURCES = 8;
 
     private const DEFAULT_FUNCTIONS = [
         'round_half_even' => 'Vanderlee\\Expression\\NativeRounding::halfEven',
@@ -84,8 +85,8 @@ class Expression
     /** @var array|null Last source routing decision, scoped to the registry revision. */
     private $sourceRoute;
 
-    /** @var array|null One native parse and execution plan, without an owner reference. */
-    private $compiledSource;
+    /** @var array Native plans in least-recently-used order, without owner references. */
+    private $compiledSources = [];
 
     public function __construct(?Backend $backend = null, bool $portableValidation = false)
     {
@@ -187,7 +188,7 @@ class Expression
     {
         ++$this->revision;
         $this->sourceRoute = null;
-        $this->compiledSource = null;
+        $this->compiledSources = [];
     }
 
     public function evaluate(string $expression, array $variables = []): float
@@ -263,13 +264,18 @@ class Expression
 
     private function compileSource(string $source): CompiledExpression
     {
-        if ($this->compiledSource !== null && $this->compiledSource[0] === $source) {
+        // Prefix keys so numeric sources remain string keys during eviction.
+        $sourceKey = ':' . $source;
+        if (isset($this->compiledSources[$sourceKey])) {
+            $prepared = $this->compiledSources[$sourceKey];
+            unset($this->compiledSources[$sourceKey]);
+            $this->compiledSources[$sourceKey] = $prepared;
             return new CompiledExpression(
                 $this,
-                $this->compiledSource[1],
+                $prepared[0],
                 $this->revision,
-                $this->compiledSource[2],
-                $this->compiledSource[3]
+                $prepared[1],
+                $prepared[2]
             );
         }
         ResourceLimits::assertExpression($source);
@@ -305,7 +311,10 @@ class Expression
         }
         $metadata['compatibility'] = $this->compatibility($source);
         if ($nativeExecution !== null) {
-            $this->compiledSource = [$source, $tree, $metadata, $nativeExecution];
+            $this->compiledSources[$sourceKey] = [$tree, $metadata, $nativeExecution];
+            if (count($this->compiledSources) > self::MAX_COMPILED_SOURCES) {
+                array_shift($this->compiledSources);
+            }
         }
         return new CompiledExpression($this, $tree, $this->revision, $metadata, $nativeExecution);
     }

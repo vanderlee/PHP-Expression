@@ -55,6 +55,17 @@ try {
         'resource_limits' => ['source' => 'sin(1) + cos(2) + sqrt(9) + max(1, 2, 3) + min(4, 5)', 'expected' => sin(1) + cos(2) + 10, 'backends' => ['native', 'grammar']],
         'eval_formatting' => ['source' => '1 + 2 * 3 + 4 / 2', 'expected' => '9'],
         'bound_formula' => ['source' => 'price * quantity * (1 - discount)', 'variables' => ['price' => '20', 'quantity' => 3, 'discount' => '0.1'], 'expected' => '54'],
+        'switching_bound_formulas' => [
+            'source' => 'price * quantity', 'alternate_source' => 'price * (quantity + 1)',
+            'variables' => ['price' => '20', 'quantity' => 3],
+            'expected' => '60', 'alternate_expected' => '80',
+        ],
+        'switching_lazy_formulas' => [
+            'source' => 'if(quantity > 10, price * quantity * 0.9, price * quantity)',
+            'alternate_source' => 'if(quantity > 2, price * quantity * 0.9, price * quantity)',
+            'variables' => ['price' => '20', 'quantity' => 3],
+            'expected' => '60', 'alternate_expected' => '54',
+        ],
         'lazy_formula' => ['source' => 'if(quantity > 10, price * quantity * 0.9, price * quantity)', 'variables' => ['price' => '20', 'quantity' => 3], 'expected' => '60'],
         'decimal_formula' => ['source' => 'round((19.95 * 3 + 4.50) * 1.21, 2)', 'expected' => '77.86'],
         'nested_functions' => ['source' => 'max(abs(-3),min(4,5)) + pow(2,3)', 'expected' => '12'],
@@ -111,11 +122,24 @@ try {
             };
             $method = in_array($backend, ['native', 'grammar'], true) ? 'evaluate' : ($backend === 'exact' ? 'evaluateExact' : 'evaluateDecimal');
             $expected = in_array($backend, ['native', 'grammar'], true) ? ($case['native_expected'] ?? $case['expected']) : $case['expected'];
-            $sources = [$case['source'], $options['source-mode'] === 'alternate' ? '(' . $case['source'] . ')' : $case['source']];
+            $sources = [
+                $case['source'],
+                $options['source-mode'] === 'alternate'
+                    ? ($case['alternate_source'] ?? '(' . $case['source'] . ')') : $case['source'],
+            ];
+            $expectedResults = [
+                $expected,
+                $options['source-mode'] === 'alternate' ? ($case['alternate_expected'] ?? $expected) : $expected,
+            ];
             $variables = $case['variables'] ?? [];
             $prepare = static function (Expression $expression) use ($sources, $method, $variables, $options): callable {
                 if ($options['execution'] === 'compiled') {
-                    $formulas = [$expression->compile($sources[0]), $expression->compile($sources[1])];
+                    // Retain each formula once; switching never recompiles it.
+                    $first = $expression->compile($sources[0]);
+                    $formulas = [
+                        $first,
+                        $sources[1] === $sources[0] ? $first : $expression->compile($sources[1]),
+                    ];
                     return static function (int $index) use ($formulas, $method, $variables) {
                         return $formulas[$index]->$method($variables);
                     };
@@ -127,7 +151,7 @@ try {
             $expression = $factory();
             $evaluate = $prepare($expression);
             foreach ([0, 1] as $index) {
-                $validate($evaluate($index), $expected, $backend);
+                $validate($evaluate($index), $expectedResults[$index], $backend);
             }
             for ($i = 0; $i < $options['warmup']; ++$i) { $evaluate($i % 2); }
             unset($evaluate, $expression);
@@ -141,7 +165,10 @@ try {
                 $started = $clock();
                 for ($i = 0; $i < $options['iterations']; ++$i) { $actual = $evaluate($i % 2); }
                 $samples[] = ($clock() - $started) / 1000000;
-                $validate($actual, $expected, $backend);
+                $validate($actual, $expectedResults[($options['iterations'] - 1) % 2], $backend);
+                foreach ([0, 1] as $index) {
+                    $validate($evaluate($index), $expectedResults[$index], $backend);
+                }
                 unset($evaluate, $expression);
             }
             $peak = memory_get_peak_usage(false);
@@ -151,6 +178,7 @@ try {
             $results[] = [
                 'case' => $name, 'backend' => $backend, 'expression' => $case['source'], 'result' => $actual,
                 'source_mode' => $options['source-mode'],
+                'sources' => $sources,
                 'execution' => $options['execution'], 'variables' => $variables,
                 'iterations_per_run' => $options['iterations'], 'runs' => $options['runs'],
                 'median_ms' => $median, 'min_ms' => min($samples), 'max_ms' => max($samples), 'samples_ms' => $samples,
@@ -189,6 +217,12 @@ try {
             $key = $row['case'] . '/' . $row['backend'];
             if (!isset($previous[$key]) || $previous[$key]['expression'] !== $row['expression']) { continue; }
             if (($previous[$key]['source_mode'] ?? 'repeat') !== $row['source_mode']) { continue; }
+            $oldSources = $previous[$key]['sources'] ?? [
+                $previous[$key]['expression'],
+                ($previous[$key]['source_mode'] ?? 'repeat') === 'alternate'
+                    ? '(' . $previous[$key]['expression'] . ')' : $previous[$key]['expression'],
+            ];
+            if ($oldSources !== $row['sources']) { continue; }
             if (($previous[$key]['execution'] ?? 'evaluate') !== $row['execution']
                 || ($previous[$key]['variables'] ?? []) !== $row['variables']) { continue; }
             $old = $previous[$key]['nanoseconds_per_evaluation'];

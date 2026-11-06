@@ -23,6 +23,9 @@ final class NativePhpBackend extends AbstractNativeBackend
     /** @var array Last execution/preflight sources; results and unit effects are never cached. */
     private $preparedSources = [];
 
+    /** @var string|null Last successfully checked PHP text; no host objects retained. */
+    private $validatedSyntax;
+
     /** @var array|null Only scalar factors are retained; host unit objects stay uncached. */
     private $numericUnits;
 
@@ -58,7 +61,7 @@ final class NativePhpBackend extends AbstractNativeBackend
                         return $match[1] . '(0.0)';
                     }, $expression, -1, $count);
                     if ($count > 0) {
-                        self::assertSyntax($this->prepareExpression($validation, $functions, true));
+                        $this->assertSyntax($this->prepareExpression($validation, $functions, true));
                     }
                     break;
                 }
@@ -89,8 +92,12 @@ final class NativePhpBackend extends AbstractNativeBackend
         return $this->unitSuffixPattern = UnitSuffixes::pattern($units);
     }
 
-    private static function assertSyntax(string $expression): void
+    private function assertSyntax(string $expression): void
     {
+        // Preparation still checks the current allowlist before this syntax-only cache.
+        if ($this->validatedSyntax === $expression) {
+            return;
+        }
         try {
             // Compile an unreachable return: no function/unit executes. Unlike
             // evaluated closures, this does not retain closure compilation data
@@ -99,6 +106,7 @@ final class NativePhpBackend extends AbstractNativeBackend
         } catch (Throwable $throwable) {
             throw new Exception($throwable->getMessage(), 0, $throwable);
         }
+        $this->validatedSyntax = $expression;
     }
 
     private function prepareExpression(string $expression, array $functions, bool $preflight = false): string

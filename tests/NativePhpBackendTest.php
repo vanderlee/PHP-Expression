@@ -11,6 +11,35 @@ use Vanderlee\Expression\Unit\Unit;
 
 class NativePhpBackendTest extends TestCase
 {
+    public function testCustomUnitPreflightHonorsSharedBackendFunctionChanges(): void
+    {
+        $backend = new NativePhpBackend();
+        $unit = new class implements Unit {
+            public $calls = 0;
+
+            public function convert(float $amount): float
+            {
+                return $amount * ++$this->calls;
+            }
+        };
+        $units = ['u' => $unit];
+        $source = '2u + f(4)';
+        $this->assertSame(6.0, $backend->evaluate($source, ['f' => 'abs'], $units));
+        $this->assertSame(8.0, $backend->evaluate($source, ['f' => 'abs'], $units));
+        $this->assertSame(8.0, $backend->evaluate($source, ['f' => 'sqrt'], $units));
+        // Even when generated syntax has been checked, revoked aliases must fail
+        // before conversion. Repeat failures to catch accidentally cached success.
+        foreach ([[], [], ['f' => 'abs)']] as $functions) {
+            try {
+                $backend->evaluate($source, $functions, $units);
+                $this->fail('Invalid function registry was accepted');
+            } catch (Exception $error) {
+                $this->assertSame(3, $unit->calls);
+            }
+        }
+        $this->assertSame(12.0, $backend->evaluate($source, ['f' => 'abs'], $units));
+    }
+
     public function testPreparationDoesNotRetainUnusedHostCallables(): void
     {
         $released = 0;

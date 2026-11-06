@@ -92,8 +92,13 @@ source is rejected before callbacks execute.
 Native custom-unit evaluation performs a syntax/allowlist preflight with dummy
 numeric operands before host conversion code runs. Numeric factors retain the
 ordinary path. PHP comments are rejected as outside the mathematical grammar.
-The preflight compiles an unreachable return instead of creating a closure;
-repeated checks do not retain closure compilation data. A sustained regression
+The preflight compiles an unreachable return instead of creating a closure.
+Each backend retains only the last successfully checked generated PHP string,
+skipping syntax compilation when that text is unchanged. Allowlist preparation
+still checks current function targets before consulting this syntax-only cache;
+unit conversions and function execution remain live. Failed syntax checks are
+never cached, and the cache retains no host objects. Repeated checks do not
+retain closure compilation data. A sustained regression
 test measures retained memory across 10,000 distinct custom-unit expressions.
 Runtime failures in otherwise valid expressions can occur after trusted
 callbacks have run; callback side effects are not transactional or sandboxed.
@@ -107,6 +112,9 @@ php tools/benchmark-performance.php --iterations=5000 --runs=7 --baseline=tools/
 php tools/benchmark-performance.php unit_suffix_regex --backend=native
 php tools/benchmark-performance.php --backend=native --source-mode=alternate
 php tools/benchmark-performance.php --backend=native --execution=compiled
+php tools/benchmark-performance.php switching_bound_formulas --backend=native --source-mode=alternate
+php tools/benchmark-performance.php switching_bound_formulas --backend=native --source-mode=alternate --execution=compiled
+php tools/benchmark-performance.php switching_lazy_formulas --backend=native --source-mode=alternate --execution=compiled
 php tools/benchmark-performance.php --backend=grammar
 php tools/benchmark-performance.php --backend=rounded --json
 ```
@@ -125,8 +133,12 @@ compiles each source outside the timed loop and measures reusable
 Reports with different execution modes or bindings are not compared.
 The default `repeat` source mode measures repeated source
 on one evaluator, including internal cache hits. `alternate` switches between
-the original source and an equivalent parenthesized source on every call, forcing
-the bounded source caches to miss. Both variants are checked before timing;
+two sources on every call. Most cases use an equivalent parenthesized source;
+`switching_bound_formulas` and `switching_lazy_formulas` use different formulas
+with independently checked results. Alternation misses single-entry caches but
+fits within the eight-entry native compiled-plan cache. Compiled execution retains
+one formula object per distinct source outside the timed loop and reuses those
+objects while switching. Both variants are checked before timing and after each sample;
 reports with different source modes are not compared. Registry construction
 is excluded. Each case has configurable warmup, iteration count, and sample
 count. Reports retain samples, median/min/max, evaluations per second, and
@@ -135,7 +147,7 @@ nanoseconds per evaluation. `hrtime()` is used where available, with a
 
 JSON reports capture PHP version, OS, architecture, timer, extensions, relevant
 INI settings, and parameters. Comparisons require matching case names and
-expression text and flag differing environments. A positive change percentage
+both source texts and flag differing environments. A positive change percentage
 means slower. Use the same machine, PHP configuration, warmup, iteration count,
 and sample count, with an otherwise idle system. Reports do not establish
 cross-machine or universal performance claims.
@@ -148,6 +160,42 @@ numbers describe this harness, not isolated request memory consumption.
 Compiled-mode memory measurements also include construction of the reusable formulas.
 
 Tool source is versionable; generated JSON under `tools/results/` is ignored.
+
+## Switching among native formulas
+
+Native compilation retains at most eight parsed/generated plans per evaluator,
+evicting the least recently used plan. Function, unit, and validation configuration
+changes clear every entry. Plans retain neither results nor evaluator references;
+bindings and callback effects are evaluated on every call. `compile()` continues
+to return separate formula objects, and saved objects remain usable after cache
+eviction. Configuration changes still make saved objects stale.
+
+For a known set of formulas, compile once and retain the objects explicitly:
+
+```php
+$expression = new \Vanderlee\Expression\Expression();
+$formulas = [
+    'subtotal' => $expression->compile('price * quantity'),
+    'discounted' => $expression->compile('price * quantity * 0.9'),
+];
+$subtotal = $formulas['subtotal']->evaluate(['price' => '20', 'quantity' => 3]);
+$discounted = $formulas['discounted']->evaluate(['price' => '20', 'quantity' => 3]);
+$nextSubtotal = $formulas['subtotal']->evaluate(['price' => '25', 'quantity' => 2]);
+```
+
+The cache applies to native compiled plans, including convenience evaluations
+with bindings or lazy conditions. The classic native normalization/execution
+cache still retains one source per execution/preflight slot. Decimal and custom
+backend caching policies are unchanged.
+
+On the Windows x64 PHP 8.2.10 environment described below, a local comparison
+with 5,000 evaluations per sample, seven samples, and 200 warmup calls reduced
+the alternating `bound_formula` median from 129.2 to 8.2 microseconds per
+evaluation (93.6%). The new distinct-source switching cases measured 6.4 versus
+5.5 microseconds for bound formulas and 9.4 versus 8.0 microseconds for lazy
+formulas, comparing convenience evaluation with retained compiled objects.
+These measurements exclude compilation in compiled mode and are local timings,
+not performance guarantees.
 
 ## Native performance measurements (2026-11-06)
 
@@ -163,8 +211,9 @@ decision per evaluator revision, and retain one prepared native source for each
 of execution and custom-unit preflight. Source and referenced function targets
 must match before prepared text is reused. Scalar unit registries retain their
 full suffix pattern, avoiding repeated registry scans without retaining host
-unit objects. Unit conversions, syntax preflight, PHP
+unit objects. Unit conversions, allowlist preparation, PHP
 execution, output checks, and finite-result checks still run for each evaluation.
+Syntax preflight compilation now reuses the last successfully checked PHP text.
 Results and callback effects are never cached. Cache sizes are bounded rather
 than growing with the number of distinct input expressions.
 
