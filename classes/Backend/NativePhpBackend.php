@@ -20,6 +20,15 @@ final class NativePhpBackend extends AbstractNativeBackend
     /** @var array */
     private $cachedSuffixes = [];
 
+    /** @var array Last execution/preflight sources; results and unit effects are never cached. */
+    private $preparedSources = [];
+
+    /** @var array|null Only scalar factors are retained; host unit objects stay uncached. */
+    private $numericUnits;
+
+    /** @var string|null */
+    private $numericUnitPattern;
+
     public function evaluate(string $expression, array $functions, array $units): float
     {
         self::assertNativeSource($expression);
@@ -35,9 +44,12 @@ final class NativePhpBackend extends AbstractNativeBackend
 
         // Convert units
         if ($units !== []) {
-            $pattern = '~((?<=[\w.)])\s*-\s*)?(?<![\w.])(-?(?:\d+\.?\d*|\.\d+))('
+            $cachedPattern = $this->numericUnits === $units ? $this->numericUnitPattern : null;
+            $pattern = $cachedPattern ?? '~((?<=[\w.)])\s*-\s*)?(?<![\w.])(-?(?:\d+\.?\d*|\.\d+))('
                 . $this->getUnitSuffixPattern($units) . ')(?![\w.])~i';
-            foreach ($units as $unit) {
+            $allScalar = true;
+            foreach ($cachedPattern === null ? $units : [] as $unit) {
+                $allScalar = $allScalar && is_scalar($unit);
                 if ($unit instanceof Unit) {
                     // Check source syntax and allowlists without invoking host
                     // conversions. Numeric placeholders preserve operand shape.
@@ -46,10 +58,14 @@ final class NativePhpBackend extends AbstractNativeBackend
                         return $match[1] . '(0.0)';
                     }, $expression, -1, $count);
                     if ($count > 0) {
-                        self::assertSyntax($this->prepareExpression($validation, $functions));
+                        self::assertSyntax($this->prepareExpression($validation, $functions, true));
                     }
                     break;
                 }
+            }
+            if ($cachedPattern === null && $allScalar) {
+                $this->numericUnits = $units;
+                $this->numericUnitPattern = $pattern;
             }
             $expression = preg_replace_callback(
                 $pattern,
@@ -85,8 +101,23 @@ final class NativePhpBackend extends AbstractNativeBackend
         }
     }
 
-    private function prepareExpression(string $expression, array $functions): string
+    private function prepareExpression(string $expression, array $functions, bool $preflight = false): string
     {
+        $slot = (int)$preflight;
+        $prepared = $this->preparedSources[$slot] ?? null;
+        if ($prepared !== null && $prepared[0] === $expression) {
+            $matches = true;
+            foreach ($prepared[1] as $alias => $target) {
+                if (!isset($functions[$alias]) || $functions[$alias] !== $target) {
+                    $matches = false;
+                    break;
+                }
+            }
+            if ($matches) {
+                return $prepared[2];
+            }
+        }
+        $source = $expression;
         // Preserve token boundaries: deleting whitespace can turn "1 2" into "12".
         $expression = trim(
             strtolower(
@@ -111,10 +142,11 @@ final class NativePhpBackend extends AbstractNativeBackend
 
         // Map function
         $numberPattern = '(?:\b\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?';
+        $usedFunctions = [];
         $expression = preg_replace_callback(
             '~' . $numberPattern . '(*SKIP)(*F)|\b[a-z_]\w*\b~i',
-            static function (array $match) use ($functions): string {
-                return self::mapFunction($match, $functions);
+            static function (array $match) use ($functions, &$usedFunctions): string {
+                return self::mapFunction($match, $functions, $usedFunctions);
             },
             $expression
         );
@@ -141,6 +173,14 @@ final class NativePhpBackend extends AbstractNativeBackend
         // Replace boolean operator 'xor'
         $expression = str_replace('^^', ' xor ', $expression);
 
+        // Direct backend callers may supply unused host callables. Do not
+        // extend their lifetimes just to retain a preparation cache entry.
+        foreach ($usedFunctions as $target) {
+            if (!is_string($target)) {
+                return $expression;
+            }
+        }
+        $this->preparedSources[$slot] = [$source, $usedFunctions, $expression];
         return $expression;
     }
 
@@ -149,7 +189,7 @@ final class NativePhpBackend extends AbstractNativeBackend
      * @return string
      * @throws Exception
      */
-    private static function mapFunction(array $match, array $functions): string
+    private static function mapFunction(array $match, array $functions, array &$usedFunctions): string
     {
         $function = $match[0];
 
@@ -158,6 +198,7 @@ final class NativePhpBackend extends AbstractNativeBackend
         }
 
         if (isset($functions[$function])) {
+            $usedFunctions[$function] = $functions[$function];
             return '\\' . $functions[$function];
         }
 

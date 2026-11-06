@@ -12,11 +12,12 @@ final class ResourceLimits
         self::assertLength($expression);
         $depth = 0;
         $maxDepth = 0;
-        $length = strlen($expression);
-        for ($index = 0; $index < $length; ++$index) {
-            if ($expression[$index] === '(') {
+        // Scan only parentheses in PHP; PCRE skips the other source bytes.
+        preg_match_all('~[()]~', $expression, $parentheses);
+        foreach ($parentheses[0] as $parenthesis) {
+            if ($parenthesis === '(') {
                 $maxDepth = max($maxDepth, ++$depth);
-            } elseif ($expression[$index] === ')') {
+            } else {
                 --$depth;
             }
         }

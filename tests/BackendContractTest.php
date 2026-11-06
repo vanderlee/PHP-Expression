@@ -5,11 +5,33 @@ declare(strict_types=1);
 use PHPUnit\Framework\TestCase;
 use Vanderlee\Expression\Backend\Backend;
 use Vanderlee\Expression\Backend\FloatBackend;
+use Vanderlee\Expression\Backend\TreeBackend;
 use Vanderlee\Expression\Exception;
 use Vanderlee\Expression\Expression;
 
 class BackendContractTest extends TestCase
 {
+    public function testCompiledCustomFloatBackendKeepsItsExecutionPolicy(): void
+    {
+        $backend = new class implements FloatBackend, TreeBackend {
+            public $calls = 0;
+
+            public function evaluate(string $expression, array $functions, array $units): float
+            {
+                return 42.0;
+            }
+
+            public function evaluateTree(array $tree, array $functions, array $units, array $variables, bool $exact = false): float
+            {
+                return 42.0 + ++$this->calls;
+            }
+        };
+        $formula = (new Expression($backend))->compile('value + 1');
+        $this->assertSame(0, $backend->calls);
+        $this->assertSame(43.0, $formula->evaluate(['value' => 2]));
+        $this->assertSame(44.0, $formula->evaluate(['value' => 3]));
+    }
+
     public function testFloatBackendCapabilityRejectsDecimalRequestsBeforeExecution(): void
     {
         $backend = new class implements FloatBackend {

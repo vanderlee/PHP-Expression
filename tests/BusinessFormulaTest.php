@@ -10,6 +10,84 @@ use Vanderlee\Expression\Unit\Unit;
 
 class BusinessFormulaTest extends TestCase
 {
+    public function testDistinctCompiledNativeFormulasHaveBoundedRetainedMemory(): void
+    {
+        foreach ([new Expression(), new Expression(new NativeGrammarBackend())] as $expression) {
+            for ($index = 0; $index < 50; ++$index) {
+                $expression->compile('value + ' . $index)->evaluate(['value' => 1]);
+            }
+            gc_collect_cycles();
+            $before = memory_get_usage(false);
+            $sum = 0.0;
+            for ($index = 0; $index < 2000; ++$index) {
+                $sum += $expression->compile('value + ' . $index)->evaluate(['value' => 1]);
+            }
+            gc_collect_cycles();
+            $this->assertSame(2001000.0, $sum);
+            $this->assertLessThan(512 * 1024, memory_get_usage(false) - $before);
+        }
+    }
+
+    public function testNativeParseCacheIsRevokedWithItsConfiguration(): void
+    {
+        $expression = new Expression();
+        $expression->addFunction('f', 'abs');
+        $first = $expression->compile('f(value)');
+        $second = $expression->compile('f(value)');
+        $this->assertNotSame($first, $second);
+        $this->assertSame($first->inspect(), $second->inspect());
+        $this->assertSame(4.0, $second->evaluate(['value' => 4]));
+        $expression->addFunction('f', 'sqrt');
+        $this->assertSame(2.0, $expression->compile('f(value)')->evaluate(['value' => 4]));
+        try {
+            $first->evaluate(['value' => 4]);
+            $this->fail('A stale formula was executed');
+        } catch (DiagnosticException $error) {
+            $this->assertSame('stale_configuration', $error->getErrorCode());
+        }
+        $expression->removeFunction('f');
+        try {
+            $expression->compile('f(value)');
+            $this->fail('Removed function was accepted');
+        } catch (DiagnosticException $error) {
+            $this->assertSame('unknown_function', $error->getErrorCode());
+        }
+    }
+
+    public function testRepeatedCompiledNativeFormulaKeepsBindingsAndEffectsLive(): void
+    {
+        foreach ([new Expression(), new Expression(new NativeGrammarBackend())] as $expression) {
+            $calls = 0;
+            $unit = new class implements Unit {
+                public $calls = 0;
+
+                public function convert(float $amount): float
+                {
+                    return $amount * ++$this->calls;
+                }
+            };
+            $expression->addUnit('u', $unit);
+            $expression->addFunction('probe', static function ($value) use (&$calls) {
+                return $value + ++$calls;
+            });
+            $formula = $expression->compile('if(flag, probe(value) + 2u, 0)');
+            $this->assertSame(0, $calls);
+            $this->assertSame(0, $unit->calls);
+            $this->assertSame(0.0, $formula->evaluate(['flag' => 0, 'value' => 3]));
+            $this->assertSame(6.0, $formula->evaluate(['flag' => 1, 'value' => 3]));
+            $this->assertSame(10.0, $formula->evaluate(['flag' => 1, 'value' => 4]));
+            try {
+                $formula->evaluate(['flag' => 0]);
+                $this->fail('Missing binding in an inactive branch was accepted');
+            } catch (DiagnosticException $error) {
+                $this->assertSame('missing_variable', $error->getErrorCode());
+                $this->assertSame(15, $error->getOffset());
+            }
+            $this->assertSame(2, $calls);
+            $this->assertSame(2, $unit->calls);
+        }
+    }
+
     private function evaluators(): array
     {
         $evaluators = [new Expression(), new Expression(new NativeGrammarBackend())];

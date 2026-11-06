@@ -81,6 +81,12 @@ class Expression
     private $portableValidation;
     private $revision = 0;
 
+    /** @var array|null Last source routing decision, scoped to the registry revision. */
+    private $sourceRoute;
+
+    /** @var array|null One native parse and execution plan, without an owner reference. */
+    private $compiledSource;
+
     public function __construct(?Backend $backend = null, bool $portableValidation = false)
     {
         $this->backend = $backend ?? new NativePhpBackend();
@@ -90,14 +96,14 @@ class Expression
 
     public function resetFunctions(): void
     {
-        ++$this->revision;
+        $this->configurationChanged();
         $this->functions = self::DEFAULT_FUNCTIONS;
     }
 
     /** Restrict subsequent evaluations to the documented shared grammar. */
     public function setPortableValidation(bool $enabled): void
     {
-        ++$this->revision;
+        $this->configurationChanged();
         $this->portableValidation = $enabled;
     }
 
@@ -113,19 +119,19 @@ class Expression
         }
         $function = FunctionValidator::target($function ?: $alias);
 
-        ++$this->revision;
+        $this->configurationChanged();
         $this->functions[$alias] = $function;
     }
 
     public function removeFunction(string $alias): void
     {
-        ++$this->revision;
+        $this->configurationChanged();
         unset($this->functions[strtolower($alias)]);
     }
 
     public function clearFunctions(): void
     {
-        ++$this->revision;
+        $this->configurationChanged();
         $this->functions = [];
     }
 
@@ -161,20 +167,27 @@ class Expression
             $unitsize = $this->backend->normalizeUnit($unitsize);
         }
 
-        ++$this->revision;
+        $this->configurationChanged();
         $this->units[$suffix] = $unitsize;
     }
 
     public function removeUnit(string $suffix): void
     {
-        ++$this->revision;
+        $this->configurationChanged();
         unset($this->units[$suffix]);
     }
 
     public function clearUnits(): void
     {
-        ++$this->revision;
+        $this->configurationChanged();
         $this->units = [];
+    }
+
+    private function configurationChanged(): void
+    {
+        ++$this->revision;
+        $this->sourceRoute = null;
+        $this->compiledSource = null;
     }
 
     public function evaluate(string $expression, array $variables = []): float
@@ -191,7 +204,25 @@ class Expression
 
     private function requiresTree(string $source, array $variables): bool
     {
-        if ($variables !== [] || preg_match('~\bif\s*\(~i', $source)) {
+        if ($variables !== []) {
+            return true;
+        }
+        if ($this->sourceRoute !== null
+            && $this->sourceRoute[0] === $source
+            && $this->sourceRoute[1] === $this->revision) {
+            return $this->sourceRoute[2];
+        }
+        $requiresTree = $this->determineSourceRoute($source);
+        // Bound retained source memory even for inputs rejected by later validation.
+        if (strlen($source) <= 4096) {
+            $this->sourceRoute = [$source, $this->revision, $requiresTree];
+        }
+        return $requiresTree;
+    }
+
+    private function determineSourceRoute(string $source): bool
+    {
+        if (preg_match('~\bif\s*\(~i', $source)) {
             return true;
         }
         if (preg_match('~\b(?:round_half_even|round_half_up|truncate|round_increment)\s*\(~i', $source)) {
@@ -232,14 +263,27 @@ class Expression
 
     private function compileSource(string $source): CompiledExpression
     {
+        if ($this->compiledSource !== null && $this->compiledSource[0] === $source) {
+            return new CompiledExpression(
+                $this,
+                $this->compiledSource[1],
+                $this->revision,
+                $this->compiledSource[2],
+                $this->compiledSource[3]
+            );
+        }
         ResourceLimits::assertExpression($source);
         if (!$this->backend instanceof TreeBackend && !$this->backend instanceof NativePhpBackend) {
             throw new DiagnosticException('unsupported_backend', 'Compilation requires a TreeBackend');
         }
         $native = $this->backend instanceof FloatBackend;
         $tree = (new GrammarParser($source, $this->functions, $this->units, $native, true))->parse();
+        $nativeExecution = null;
         if ($native) {
-            (new NativeGrammarBackend())->validateTree($tree);
+            $prepared = (new NativeGrammarBackend())->prepareTree($tree);
+            if ($this->backend instanceof NativePhpBackend || $this->backend instanceof NativeGrammarBackend) {
+                $nativeExecution = $prepared;
+            }
         }
         if ($this->backend instanceof \Vanderlee\Expression\Backend\BcMathBackend) {
             $this->backend->validateTree($tree, $this->units);
@@ -260,7 +304,10 @@ class Expression
             sort($metadata[$key]);
         }
         $metadata['compatibility'] = $this->compatibility($source);
-        return new CompiledExpression($this, $tree, $this->revision, $metadata);
+        if ($nativeExecution !== null) {
+            $this->compiledSource = [$source, $tree, $metadata, $nativeExecution];
+        }
+        return new CompiledExpression($this, $tree, $this->revision, $metadata, $nativeExecution);
     }
 
     public function validate(string $source): void
@@ -385,8 +432,13 @@ class Expression
     }
 
     /** @internal Called by CompiledExpression; configuration changes invalidate saved trees. */
-    public function executeCompiled(array $tree, int $revision, array $variables, string $mode)
-    {
+    public function executeCompiled(
+        array $tree,
+        int $revision,
+        array $variables,
+        string $mode,
+        ?callable $nativeExecution = null
+    ) {
         if ($revision !== $this->revision) {
             throw new DiagnosticException(
                 'stale_configuration',
@@ -423,10 +475,16 @@ class Expression
             }
             $values[$name] = $value;
         }
-        $this->assertBindings($tree, $values, 0);
+        if ($nativeExecution === null || !$this->backend instanceof FloatBackend) {
+            $this->assertBindings($tree, $values, 0);
+        }
         try {
-            $backend = $this->backend instanceof NativePhpBackend ? new NativeGrammarBackend() : $this->backend;
-            $result = $backend->evaluateTree($tree, $this->functions, $this->units, $values, $mode === 'exact');
+            if ($nativeExecution !== null && $this->backend instanceof FloatBackend) {
+                $result = $nativeExecution($this->functions, $this->units, $values);
+            } else {
+                $backend = $this->backend instanceof NativePhpBackend ? new NativeGrammarBackend() : $this->backend;
+                $result = $backend->evaluateTree($tree, $this->functions, $this->units, $values, $mode === 'exact');
+            }
             if (!is_float($result) && (!is_string($result) || !preg_match(
                         '~^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$~D',
                         $result

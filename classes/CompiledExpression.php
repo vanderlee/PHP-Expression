@@ -12,12 +12,21 @@ final class CompiledExpression
     private $revision;
     private $metadata;
 
-    public function __construct(Expression $owner, array $tree, int $revision, array $metadata)
-    {
+    /** @var callable|null Generated native source owned by this compiled formula. */
+    private $nativeExecution;
+
+    public function __construct(
+        Expression $owner,
+        array $tree,
+        int $revision,
+        array $metadata,
+        ?callable $nativeExecution = null
+    ) {
         $this->owner = $owner;
         $this->tree = $tree;
         $this->revision = $revision;
         $this->metadata = $metadata;
+        $this->nativeExecution = $nativeExecution;
     }
 
     public function inspect(): array
@@ -27,7 +36,7 @@ final class CompiledExpression
 
     public function evaluate(array $variables = []): float
     {
-        return (float)$this->owner->executeCompiled($this->tree, $this->revision, $variables, 'float');
+        return (float)$this->owner->executeCompiled($this->tree, $this->revision, $variables, 'float', $this->nativeExecution);
     }
 
     public function evaluateDecimal(array $variables = []): string

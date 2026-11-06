@@ -11,12 +11,14 @@ use Vanderlee\Expression\Unit\Unit;
 require __DIR__ . '/../vendor/autoload.php';
 
 // Do not change global precision, PRNG, or BCMath settings.
-$options = ['case' => 'all', 'backend' => 'all', 'iterations' => 5000, 'runs' => 7, 'warmup' => 200, 'json' => false, 'output' => null, 'baseline' => null];
+$options = ['case' => 'all', 'backend' => 'all', 'source-mode' => 'repeat', 'execution' => 'evaluate', 'iterations' => 5000, 'runs' => 7, 'warmup' => 200, 'json' => false, 'output' => null, 'baseline' => null];
 try {
     foreach (array_slice($argv, 1) as $argument) {
         if ($argument === '--help') {
             echo "Usage: php tools/benchmark-performance.php [case] [--case=NAME] [--backend=all|native|grammar|exact|rounded]\n";
             echo "       [--iterations=N] [--runs=N] [--warmup=N] [--json] [--output=FILE] [--baseline=FILE] [--list]\n";
+            echo "       [--source-mode=repeat|alternate]\n";
+            echo "       [--execution=evaluate|compiled]\n";
             exit(0);
         }
         if ($argument === '--json') { $options['json'] = true; continue; }
@@ -39,6 +41,8 @@ try {
         $options[$key] = (int) $options[$key];
     }
     if (!in_array($options['backend'], ['all', 'native', 'grammar', 'exact', 'rounded'], true)) { throw new InvalidArgumentException('Unknown backend'); }
+    if (!in_array($options['source-mode'], ['repeat', 'alternate'], true)) { throw new InvalidArgumentException('Unknown source mode'); }
+    if (!in_array($options['execution'], ['evaluate', 'compiled'], true)) { throw new InvalidArgumentException('Unknown execution mode'); }
     $cases = [
         'unit_suffix_regex' => [
             'source' => '1unit119 + 2unit099 + 3unit010 + 4unit001', 'expected' => '361',
@@ -50,6 +54,8 @@ try {
         'boolean_whitespace' => ['source' => 'not ( 0 ) and ( 1 or 0 ) xor 0', 'expected' => '1'],
         'resource_limits' => ['source' => 'sin(1) + cos(2) + sqrt(9) + max(1, 2, 3) + min(4, 5)', 'expected' => sin(1) + cos(2) + 10, 'backends' => ['native', 'grammar']],
         'eval_formatting' => ['source' => '1 + 2 * 3 + 4 / 2', 'expected' => '9'],
+        'bound_formula' => ['source' => 'price * quantity * (1 - discount)', 'variables' => ['price' => '20', 'quantity' => 3, 'discount' => '0.1'], 'expected' => '54'],
+        'lazy_formula' => ['source' => 'if(quantity > 10, price * quantity * 0.9, price * quantity)', 'variables' => ['price' => '20', 'quantity' => 3], 'expected' => '60'],
         'decimal_formula' => ['source' => 'round((19.95 * 3 + 4.50) * 1.21, 2)', 'expected' => '77.86'],
         'nested_functions' => ['source' => 'max(abs(-3),min(4,5)) + pow(2,3)', 'expected' => '12'],
         'long_expression' => ['source' => implode('+', array_fill(0, 64, 'abs(-1)')), 'expected' => '64'],
@@ -105,22 +111,38 @@ try {
             };
             $method = in_array($backend, ['native', 'grammar'], true) ? 'evaluate' : ($backend === 'exact' ? 'evaluateExact' : 'evaluateDecimal');
             $expected = in_array($backend, ['native', 'grammar'], true) ? ($case['native_expected'] ?? $case['expected']) : $case['expected'];
+            $sources = [$case['source'], $options['source-mode'] === 'alternate' ? '(' . $case['source'] . ')' : $case['source']];
+            $variables = $case['variables'] ?? [];
+            $prepare = static function (Expression $expression) use ($sources, $method, $variables, $options): callable {
+                if ($options['execution'] === 'compiled') {
+                    $formulas = [$expression->compile($sources[0]), $expression->compile($sources[1])];
+                    return static function (int $index) use ($formulas, $method, $variables) {
+                        return $formulas[$index]->$method($variables);
+                    };
+                }
+                return static function (int $index) use ($expression, $sources, $method, $variables) {
+                    return $expression->$method($sources[$index], $variables);
+                };
+            };
             $expression = $factory();
-            $actual = $expression->$method($case['source']);
-            $validate($actual, $expected, $backend);
-            for ($i = 0; $i < $options['warmup']; ++$i) { $expression->$method($case['source']); }
-            unset($expression);
+            $evaluate = $prepare($expression);
+            foreach ([0, 1] as $index) {
+                $validate($evaluate($index), $expected, $backend);
+            }
+            for ($i = 0; $i < $options['warmup']; ++$i) { $evaluate($i % 2); }
+            unset($evaluate, $expression);
             $resetPeak = function_exists('memory_reset_peak_usage');
             if ($resetPeak) { memory_reset_peak_usage(); }
             $baselineMemory = memory_get_usage(false);
             $samples = [];
             for ($run = 0; $run < $options['runs']; ++$run) {
                 $expression = $factory();
+                $evaluate = $prepare($expression);
                 $started = $clock();
-                for ($i = 0; $i < $options['iterations']; ++$i) { $actual = $expression->$method($case['source']); }
+                for ($i = 0; $i < $options['iterations']; ++$i) { $actual = $evaluate($i % 2); }
                 $samples[] = ($clock() - $started) / 1000000;
                 $validate($actual, $expected, $backend);
-                unset($expression);
+                unset($evaluate, $expression);
             }
             $peak = memory_get_peak_usage(false);
             sort($samples);
@@ -128,6 +150,8 @@ try {
             $median = count($samples) % 2 ? $samples[$middle] : ($samples[$middle - 1] + $samples[$middle]) / 2;
             $results[] = [
                 'case' => $name, 'backend' => $backend, 'expression' => $case['source'], 'result' => $actual,
+                'source_mode' => $options['source-mode'],
+                'execution' => $options['execution'], 'variables' => $variables,
                 'iterations_per_run' => $options['iterations'], 'runs' => $options['runs'],
                 'median_ms' => $median, 'min_ms' => min($samples), 'max_ms' => max($samples), 'samples_ms' => $samples,
                 'evaluations_per_second' => $median > 0 ? $options['iterations'] * 1000 / $median : null,
@@ -150,7 +174,9 @@ try {
             'precision' => ini_get('precision'), 'serialize_precision' => ini_get('serialize_precision'), 'bcmath_scale' => ini_get('bcmath.scale'),
         ],
         'parameters' => $options,
-        'measurement_scope' => 'Repeated full public API evaluations; registration excluded from timing. Memory includes per-run setup; peak delta requires memory_reset_peak_usage, otherwise peak is process-wide.',
+        'measurement_scope' => $options['execution'] === 'compiled'
+            ? 'Reusable compiled formula evaluations; registration and compilation excluded from timing. Memory includes per-run setup; peak delta requires memory_reset_peak_usage, otherwise peak is process-wide.'
+            : 'Full public API evaluations; registration excluded from timing. Memory includes per-run setup; peak delta requires memory_reset_peak_usage, otherwise peak is process-wide.',
         'results' => $results, 'skipped' => $skipped,
     ];
     if ($options['baseline'] !== null) {
@@ -162,6 +188,9 @@ try {
         foreach ($results as $row) {
             $key = $row['case'] . '/' . $row['backend'];
             if (!isset($previous[$key]) || $previous[$key]['expression'] !== $row['expression']) { continue; }
+            if (($previous[$key]['source_mode'] ?? 'repeat') !== $row['source_mode']) { continue; }
+            if (($previous[$key]['execution'] ?? 'evaluate') !== $row['execution']
+                || ($previous[$key]['variables'] ?? []) !== $row['variables']) { continue; }
             $old = $previous[$key]['nanoseconds_per_evaluation'];
             $comparisons[] = ['case' => $row['case'], 'backend' => $row['backend'], 'change_percent' => $old > 0 ? 100 * ($row['nanoseconds_per_evaluation'] / $old - 1) : null];
         }
@@ -176,7 +205,7 @@ try {
     }
     if ($options['json']) { echo $json . "\n"; }
     else {
-        printf("PHP %s | %s | %d-bit | %s | iterations=%d runs=%d warmup=%d\n", PHP_VERSION, PHP_OS, PHP_INT_SIZE * 8, $report['environment']['clock'], $options['iterations'], $options['runs'], $options['warmup']);
+        printf("PHP %s | %s | %d-bit | %s | execution=%s source=%s | iterations=%d runs=%d warmup=%d\n", PHP_VERSION, PHP_OS, PHP_INT_SIZE * 8, $report['environment']['clock'], $options['execution'], $options['source-mode'], $options['iterations'], $options['runs'], $options['warmup']);
         foreach ($results as $row) {
             printf("%-24s %-7s median=%9.3fms rate=%10.0f/s ns/eval=%10.0f peak=%8dB delta=%s\n", $row['case'], $row['backend'], $row['median_ms'], $row['evaluations_per_second'], $row['nanoseconds_per_evaluation'], $row['memory_peak_bytes'], $row['memory_peak_delta_bytes'] === null ? 'n/a (process peak)' : $row['memory_peak_delta_bytes'] . 'B');
         }

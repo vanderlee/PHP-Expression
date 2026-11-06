@@ -105,19 +105,29 @@ php tools/benchmark-performance.php --list
 php tools/benchmark-performance.php --iterations=5000 --runs=7 --output=tools/results/before.json
 php tools/benchmark-performance.php --iterations=5000 --runs=7 --baseline=tools/results/before.json --output=tools/results/after.json
 php tools/benchmark-performance.php unit_suffix_regex --backend=native
+php tools/benchmark-performance.php --backend=native --source-mode=alternate
+php tools/benchmark-performance.php --backend=native --execution=compiled
 php tools/benchmark-performance.php --backend=grammar
 php tools/benchmark-performance.php --backend=rounded --json
 ```
 
 The unit fixture registers 120 suffixes and references only registered suffixes.
-Cases include scalar/base arithmetic, booleans, decimal formulas, nested
-functions, long expressions, custom units, and rounded division/roots. Cases
+Cases include scalar/base arithmetic, booleans, decimal formulas, named bindings,
+lazy conditions, nested functions, long expressions, custom units, and rounded division/roots. Cases
 unsupported by a selected arithmetic policy are explicitly skipped; selecting
 only unsupported combinations fails. Results are verified against known
 answers before timing and after every sample.
 
-Timing measures repeated full public API evaluation, including parsing and
-normalization; there is no compiled-expression reuse API. Registry construction
+The default `--execution=evaluate` measures full public API evaluation, including
+any parsing and normalization required for each call. `--execution=compiled`
+compiles each source outside the timed loop and measures reusable
+`CompiledExpression` evaluation, including binding validation and callbacks.
+Reports with different execution modes or bindings are not compared.
+The default `repeat` source mode measures repeated source
+on one evaluator, including internal cache hits. `alternate` switches between
+the original source and an equivalent parenthesized source on every call, forcing
+the bounded source caches to miss. Both variants are checked before timing;
+reports with different source modes are not compared. Registry construction
 is excluded. Each case has configurable warmup, iteration count, and sample
 count. Reports retain samples, median/min/max, evaluations per second, and
 nanoseconds per evaluation. `hrtime()` is used where available, with a
@@ -135,5 +145,48 @@ Memory measurements include per-run setup. On PHP with
 otherwise the peak is process-wide and the case delta is unavailable. Cases
 share a process, so autoloaded code and runtime caches can persist. Memory
 numbers describe this harness, not isolated request memory consumption.
+Compiled-mode memory measurements also include construction of the reusable formulas.
 
 Tool source is versionable; generated JSON under `tools/results/` is ignored.
+
+## Native performance measurements (2026-11-06)
+
+On Windows, 64-bit PHP 8.2.10, 5,000 evaluations per sample, seven samples,
+and 200 warmup calls, the native changes reduced median evaluation time by
+43 to 95% across twelve repeated-source cases. Alternating-source measurements
+ranged from effectively unchanged to 32% faster; changes near 1% are within
+ordinary timing noise. These are local measurements against commit `9ddb849`
+using the same harness and PHP settings, not a cross-version performance guarantee.
+
+The changes move the resource-limit byte scan into PCRE, retain one routing
+decision per evaluator revision, and retain one prepared native source for each
+of execution and custom-unit preflight. Source and referenced function targets
+must match before prepared text is reused. Scalar unit registries retain their
+full suffix pattern, avoiding repeated registry scans without retaining host
+unit objects. Unit conversions, syntax preflight, PHP
+execution, output checks, and finite-result checks still run for each evaluation.
+Results and callback effects are never cached. Cache sizes are bounded rather
+than growing with the number of distinct input expressions.
+
+The benchmark now also covers named bindings, lazy formulas, and reusable
+compiled formulas. In a separate comparison using 3,000 evaluations per sample
+and five samples, preparing native code and required bindings once per compiled
+formula reduced medians by 39 to 70% across twelve compiled-mode cases. The
+prepared callable retains generated source and variable names/offsets, while
+the owner continues to supply the current functions, units, and values. Stale
+configuration checks run before execution. Custom backend execution remains
+delegated to that backend.
+
+Repeated convenience evaluations with bindings or lazy conditions also reuse
+the last native parse and prepared plan. Configuration changes immediately
+clear that cache, and `compile()` still returns separate formula objects. This
+reduced the bound-formula case from 112 to 7.7 microseconds and the lazy-formula
+case from 179 to 8.7 microseconds per evaluation in the repeated-source run.
+The cache stores parse data rather than a `CompiledExpression`, avoiding an
+owner reference cycle. Tests exercise registry changes, stale formulas, live
+callbacks and units, diagnostics, custom backend policies, host-callable release,
+and retained memory across distinct compiled formulas.
+
+Other measured candidates were combined keyword normalization, fewer generated
+parentheses, and locale-independent numeric formatting on newer PHP. They did
+not show a sufficiently large, reliable improvement and were left unchanged.

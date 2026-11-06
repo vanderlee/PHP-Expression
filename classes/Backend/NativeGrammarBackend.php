@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Vanderlee\Expression\Backend;
 
+use Vanderlee\Expression\DiagnosticException;
 use Vanderlee\Expression\Exception;
 use Vanderlee\Expression\FunctionValidator;
 use Vanderlee\Expression\ResourceLimits;
@@ -27,10 +28,39 @@ final class NativeGrammarBackend extends AbstractNativeBackend implements TreeBa
         bool $exact = false
     ): float {
         $amounts = [];
+        $bindings = [];
+        $php = $this->generate($tree, $amounts, 0, $bindings);
+        return self::executePrepared($php, $amounts, $this->hasConditional($tree), $functions, $units, $variables);
+    }
+
+    /** @internal Prepare immutable syntax without retaining results or registry objects. */
+    public function prepareTree(array $tree): callable
+    {
+        $amounts = [];
+        $bindings = [];
         // Validate and generate the entire tree before invoking any host code.
-        $php = $this->generate($tree, $amounts, 0);
+        $php = $this->generate($tree, $amounts, 0, $bindings);
+        $conditional = $this->hasConditional($tree);
+        return static function (array $functions, array $units, array $variables) use ($php, $amounts, $conditional, $bindings): float {
+            foreach ($bindings as $name => $offset) {
+                if (!array_key_exists($name, $variables)) {
+                    throw new DiagnosticException('missing_variable', 'Unknown variable `' . $name . '`', $offset);
+                }
+            }
+            return self::executePrepared($php, $amounts, $conditional, $functions, $units, $variables);
+        };
+    }
+
+    private static function executePrepared(
+        string $php,
+        array $amounts,
+        bool $conditional,
+        array $functions,
+        array $units,
+        array $variables
+    ): float {
         $converted = [];
-        if (!$this->hasConditional($tree)) {
+        if (!$conditional) {
             foreach ($amounts as $index => $amount) {
                 $converted[$index] = self::convertUnitAmount($amount[0], $units[$amount[1]]);
             }
@@ -45,7 +75,7 @@ final class NativeGrammarBackend extends AbstractNativeBackend implements TreeBa
         return self::runExpression($php, [], $functions, $variables, $convert);
     }
 
-    private function generate(array $node, array &$amounts, int $depth): string
+    private function generate(array $node, array &$amounts, int $depth, array &$bindings): string
     {
         // Flat left-associative chains can exceed source parenthesis depth.
         // The input byte limit bounds this tree independently of parser nesting.
@@ -53,12 +83,15 @@ final class NativeGrammarBackend extends AbstractNativeBackend implements TreeBa
             throw new Exception('native grammar tree too deeply nested');
         }
         if ($node[0] === 'variable') {
+            if (!array_key_exists($node[1], $bindings)) {
+                $bindings[$node[1]] = $node[2] ?? null;
+            }
             return '($variables[' . var_export($node[1], true) . '])';
         }
         if ($node[0] === 'conditional') {
             $parts = [];
             foreach ($node[2] as $part) {
-                $parts[] = $this->generate($part, $amounts, $depth + 1);
+                $parts[] = $this->generate($part, $amounts, $depth + 1, $bindings);
             }
             return '(' . $parts[0] . ' ? ' . $parts[1] . ' : ' . $parts[2] . ')';
         }
@@ -77,7 +110,7 @@ final class NativeGrammarBackend extends AbstractNativeBackend implements TreeBa
             $target = FunctionValidator::target($node[1]);
             $arguments = [];
             foreach ($node[2] as $argument) {
-                $arguments[] = $this->generate($argument, $amounts, $depth + 1);
+                $arguments[] = $this->generate($argument, $amounts, $depth + 1, $bindings);
             }
             if (isset($node[3])) {
                 return '($functions[' . var_export($node[3], true) . '](' . implode(',', $arguments) . '))';
@@ -87,10 +120,10 @@ final class NativeGrammarBackend extends AbstractNativeBackend implements TreeBa
         $operators = ['and' => '&&', 'or' => '||', '^^' => 'xor', 'not' => '!'];
         $operator = $operators[$node[1]] ?? $node[1];
         if ($node[0] === 'unary') {
-            return '(' . $operator . $this->generate($node[2], $amounts, $depth + 1) . ')';
+            return '(' . $operator . $this->generate($node[2], $amounts, $depth + 1, $bindings) . ')';
         }
-        $left = $this->generate($node[2], $amounts, $depth + 1);
-        $right = $this->generate($node[3], $amounts, $depth + 1);
+        $left = $this->generate($node[2], $amounts, $depth + 1, $bindings);
+        $right = $this->generate($node[3], $amounts, $depth + 1, $bindings);
         return '(' . $left . ' ' . $operator . ' ' . $right . ')';
     }
 
@@ -125,6 +158,7 @@ final class NativeGrammarBackend extends AbstractNativeBackend implements TreeBa
     public function validateTree(array $tree): void
     {
         $amounts = [];
-        $this->generate($tree, $amounts, 0);
+        $bindings = [];
+        $this->generate($tree, $amounts, 0, $bindings);
     }
 }

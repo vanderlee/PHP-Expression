@@ -11,6 +11,107 @@ use Vanderlee\Expression\Unit\Unit;
 
 class NativePhpBackendTest extends TestCase
 {
+    public function testPreparationDoesNotRetainUnusedHostCallables(): void
+    {
+        $released = 0;
+        $target = new class($released) {
+            private $released;
+
+            public function __construct(int &$released)
+            {
+                $this->released = &$released;
+            }
+
+            public function __invoke(): int
+            {
+                return 1;
+            }
+
+            public function __destruct()
+            {
+                ++$this->released;
+            }
+        };
+        $backend = new NativePhpBackend();
+        $this->assertSame(1.0, $backend->evaluate('1', ['unused' => $target], []));
+        unset($target);
+        $this->assertSame(1, $released);
+    }
+
+    public function testScalarUnitPatternSurvivesSharedBackendRegistryChanges(): void
+    {
+        $backend = new NativePhpBackend();
+        $first = new Expression($backend);
+        $second = new Expression($backend);
+        $first->addUnit('u', 2);
+        $second->addUnit('v', new class implements Unit {
+            public function convert(float $amount): float
+            {
+                return $amount * 3;
+            }
+        });
+        $this->assertSame(4.0, $first->evaluate('2u'));
+        $this->assertSame(4.0, $first->evaluate('2u'));
+        $this->assertSame(6.0, $second->evaluate('2v'));
+        $this->assertSame(4.0, $first->evaluate('2u'));
+        $first->addUnit('u', 5);
+        $this->assertSame(10.0, $first->evaluate('2u'));
+        $first->addUnit('u', new class implements Unit {
+            public function convert(float $amount): float
+            {
+                return $amount * -2;
+            }
+        });
+        $this->assertSame(-4.0, $first->evaluate('2u'));
+        $first->addUnit('u', 2);
+        $this->assertSame(4.0, $first->evaluate('2u'));
+    }
+
+    public function testRepeatedSourceHonorsFunctionReplacementAndRevocation(): void
+    {
+        $expression = new Expression();
+        $source = 'abs(-4)';
+        $this->assertSame(4.0, $expression->evaluate($source));
+        $this->assertSame(4.0, $expression->evaluate($source));
+        $calls = 0;
+        $expression->addFunction('abs', static function ($value) use (&$calls) {
+            return $value + ++$calls;
+        });
+        $this->assertSame(-3.0, $expression->evaluate($source));
+        $this->assertSame(-2.0, $expression->evaluate($source));
+        $expression->addFunction('abs', 'sqrt');
+        $this->assertSame(2.0, $expression->evaluate('abs(4)'));
+        $this->assertSame(2.0, $expression->evaluate('abs(4)'));
+        $expression->removeFunction('abs');
+        $this->expectException(Exception::class);
+        $expression->evaluate('abs(4)');
+    }
+
+    public function testRepeatedSourceRunsStatefulUnitsAndRejectsInvalidSourceBeforeEffects(): void
+    {
+        $unit = new class implements Unit {
+            public $calls = 0;
+
+            public function convert(float $amount): float
+            {
+                return $amount * ++$this->calls;
+            }
+        };
+        $expression = new Expression();
+        $expression->addUnit('u', $unit);
+        $this->assertSame(3.0, $expression->evaluate('2u + abs(-1)'));
+        $this->assertSame(5.0, $expression->evaluate('2u + abs(-1)'));
+        for ($attempt = 0; $attempt < 2; ++$attempt) {
+            try {
+                $expression->evaluate('2u + abs(-1) +');
+                $this->fail('Invalid source was accepted');
+            } catch (Exception $error) {
+                $this->assertSame(2, $unit->calls);
+            }
+        }
+        $this->assertSame(7.0, $expression->evaluate('2u + abs(-1)'));
+    }
+
     public function testExplicitNativeBackendMatchesDefault(): void
     {
         $native = new Expression(new NativePhpBackend());
