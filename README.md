@@ -1,10 +1,7 @@
 PHP-Expression
 ==============
-Version 1.1.0
 
 Simple and fast PHP expression parser, based on secure use of eval().
-
-Compatible with PHP 7.1 and up.
 
 For application integration, see the [business formula API](docs/BUSINESS_FORMULAS.md)
 and [runnable recipes](examples/business.php). Named numeric bindings, reusable
